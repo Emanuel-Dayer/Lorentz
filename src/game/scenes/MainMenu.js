@@ -65,7 +65,7 @@ export default class InitialMenu extends Phaser.Scene {
     
     // Asigna el manejador de click al botón principal
     this.#nextButton.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => {
-        this.scene.start("Game", { language: this.language });
+        this.scene.start("PreGame", { language: this.language });
     });
       
     // Efectos Hover con Delineado para 'Next'

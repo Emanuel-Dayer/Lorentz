@@ -194,18 +194,22 @@ export default class InputSystem {
    * @returns {boolean} True si la acción está presionada.
    */
   isDown(action, player = "player1") {
-    const isGamepad = this.getGamepadInfo(player) !== null;
-    
-    if (isGamepad) {
-      const gamepad = player === 'player1' ? this.gamepad1 : this.gamepad2;
-      const mappedState = this._mapGamepad(gamepad);
-      // Devuelve el estado actual del gamepad (refrescado en update())
-      return mappedState[action] || false;
-    } else {
-      // Usar Keyboard
-      const key = this.keys[player][action];
-      return key ? key.isDown : false;
+    // Comprobar Gamepad
+    let gamepadIsDown = false;
+    const gamepad = this.getGamepadInfo(player);
+    if (gamepad) {
+      const mapped = this._mapGamepad(gamepad);
+      gamepadIsDown = mapped[action] || false;
     }
+
+    // Comprobar Teclado
+    let keyIsDown = false;
+    const key = this.keys[player]?.[action];
+    if (key) {
+      keyIsDown = key.isDown;
+    }
+
+    return gamepadIsDown || keyIsDown;
   }
 
   /**
@@ -215,17 +219,24 @@ export default class InputSystem {
    * @returns {boolean} True si la acción fue presionada en este frame, pero no en el anterior.
    */
   isJustPressed(action, player = "player1") {
-    const gamepad = player === "player1" ? this.gamepad1 : this.gamepad2;
-    const prevState = this.prevGamepadStates.get(player);
-
-    if (gamepad && prevState) {
-      const currentState = this._mapGamepad(gamepad);
-      if (currentState[action] && !prevState[action]) {
-        return true;
-      }
+    // Comprobar Gamepad
+    let gamepadJustPressed = false;
+    const gamepad = this.getGamepadInfo(player);
+    const prevGamepadState = this.prevGamepadStates.get(player);
+    if (gamepad && prevGamepadState) {
+      const currentGamepadState = this._mapGamepad(gamepad);
+      gamepadJustPressed = currentGamepadState[action] && !prevGamepadState[action];
     }
-    // No hay fallback a teclado aquí, isJustPressed es principalmente para gamepad
-    return false;
+
+    // Comprobar Teclado
+    let keyJustPressed = false;
+    const key = this.keys[player]?.[action];
+    const prevKeyState = this.prevKeyStates.get(player);
+    if (key && prevKeyState) {
+      keyJustPressed = key.isDown && !prevKeyState[action];
+    }
+
+    return gamepadJustPressed || keyJustPressed;
   }
 
   /**

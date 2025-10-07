@@ -3,6 +3,7 @@ import { Game as MainGame } from "./scenes/Game";
 import { AUTO, Scale, Game } from "phaser";
 import { Preload } from "./scenes/Preload";
 import InitialMenu from "./scenes/MainMenu";
+import { PreGame } from "./scenes/PreGame";
 
 const config = {
   type: AUTO,
@@ -29,7 +30,7 @@ const config = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [Boot, Preload, MainGame, InitialMenu],
+  scene: [Boot, Preload, InitialMenu, PreGame, MainGame],
 };
 
 const StartGame = (parent) => {

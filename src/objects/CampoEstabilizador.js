@@ -1,10 +1,9 @@
 import { Physics } from "phaser";
 
 export default class CampoEstabilizador {
-  constructor(scene, Particula, Paletas, uiManager) {
+  constructor(scene, Particula, uiManager) {
     this.scene = scene;
     this.Particula = Particula;
-    this.Paletas = Paletas; // array con las dos paletas
     this.uiManager = uiManager;
     this.hitCount = 0;
 
@@ -44,14 +43,6 @@ export default class CampoEstabilizador {
 
     scene.physics.add.collider(Particula, this.leftBlock);
     scene.physics.add.collider(Particula, this.rightBlock);
-
-    // Colisión con paletas
-    Paletas.forEach(paddle => {
-      scene.physics.add.collider(Particula, paddle, () => {
-        this.hitCount++;
-        this.uiManager.updateHitCount(this.hitCount);
-      });
-    });
 
     // Colisión con la barrera energética
     scene.physics.add.collider(Particula, this.barrier, () => {

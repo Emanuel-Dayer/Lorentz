@@ -68,8 +68,6 @@ export class UIManager {
    * @param {number} count
    */
   updateHitCount(count) {
-    if (this.hitCountText.visible) {
-      this.hitCountText.setText('Toques: ' + count);
-    }
+    this.hitCountText.setText('Toques: ' + count);
   }
 }

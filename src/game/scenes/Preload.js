@@ -44,7 +44,7 @@ export class Preload extends Scene {
   #isAssetsLoaded = false;
 
   // Tiempo mínimo falso de carga (en ms)
-  #MIN_LOAD_TIME_MS = 3000; // 3 segundos de ESPERA MÍNIMA después de la carga
+  #MIN_LOAD_TIME_MS = 0; // 3 segundos de ESPERA MÍNIMA después de la carga
 
   constructor() {
     super("Preload");

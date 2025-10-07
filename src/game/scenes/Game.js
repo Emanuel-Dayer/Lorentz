@@ -48,7 +48,7 @@ export class Game extends Scene {
     };
   }
 
-  init() {
+  init({ jugadorParaServir }) {
     // --- Controles de teclado (MANEJADOS POR InputSystem) ---
     this.keyP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
@@ -56,7 +56,7 @@ export class Game extends Scene {
     // --- Variables de Juego ---
     this.VelocidadPala = 900;
     this.VelocidadParticula = 900;
-    this.jugadorParaServir = 1;
+    this.jugadorParaServir = jugadorParaServir || 1; // Recibe al ganador o usa 1 por defecto
     this.puntuacionP1 = 0;
     this.puntuacionP2 = 0;
 
@@ -64,29 +64,75 @@ export class Game extends Scene {
   }
 
   create() {
-    // --- Añadir Sonidos que cargamos en la escena de Preload ---
     this.sounds.ParticulaRebota = this.sound.add("ParticulaRebota");
     this.sounds.ColisionObstaculo = this.sound.add("ColisionObstaculo");
 
+    const gameWidth = this.sys.game.config.width;
     const gameHeight = this.sys.game.config.height;
 
-    // --- Crear Sistemas para la UI, y los controles de joystick/gamepad y teclado ---
     this.inputSystem = new InputSystem(this, this.keyMap1, this.keyMap2);
     this.uiManager = new UIManager(this);
     this.controlsUI = new ControlsStatusUI(this, this.inputSystem);
-    this.controlsUI.setVisible(false); // Oculto por defecto
+    this.controlsUI.setVisible(false);
 
-    // --- Crear Objetos de Juego ---
+    // Crear palas
     this.pala1 = new Pala(this, 100, gameHeight / 2, 'player1');
-    this.pala2 = new Pala(this, this.sys.game.config.width - 100, gameHeight / 2, 'player2');
-
+    this.pala2 = new Pala(this, gameWidth - 100, gameHeight / 2, 'player2');
+    
+    // Crear partícula
     const particulaConfig = {
       VelocidadParticula: this.VelocidadParticula,
       VelocidadPala: this.VelocidadPala,
       MAX_ROTATION_DEG: this.MAX_ROTATION_DEG
     };
-    this.particula = new Particula(this, 0, 0, 35, particulaConfig);
+    this.particula = new Particula(this, gameWidth/2, gameHeight/2, 35, particulaConfig);
 
+    // Crear el resto de objetos del juego
+    this.createGameObjects();
+  }
+
+  update(time, delta) {
+    // Actualizar el sistema de entrada PRIMERO
+    this.inputSystem.update();
+
+    // Comprobar si se ha pulsado el botón de intercambio de jugadores
+    if (this.inputSystem.isSwapButtonPressed()) {
+      this.inputSystem.swapPlayers();
+    }
+
+    // Comprobar teclas de debug/reinicio en cada frame
+    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
+    if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
+
+    // Actualizar las palas siempre, para que el debug de ángulo funcione
+    this.pala1.update(delta);
+    this.pala2.update(delta);
+
+    // Actualizar la UI de debug si está visible
+    this.uiManager.updateDebugTexts(this.pala1, this.pala2);
+    if (this.controlsUI && this.controlsUI.allUIElements[0]?.visible) {
+        this.controlsUI.update();
+    }
+
+    // Lógica principal del juego
+    if (this.particula.isPegada) {
+      const palaActiva = (this.jugadorParaServir === 1) ? this.pala1 : this.pala2;
+      this.particula.actualizarPosicionPegada(palaActiva);
+
+      const playerKey = this.jugadorParaServir === 1 ? 'player1' : 'player2';
+      if (this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, playerKey)) {
+        this.particula.lanzar(palaActiva, this.jugadorParaServir);
+      }
+    } else {
+      this.ComprobarPunto();
+    }
+
+    // Guardar el estado de entrada para el próximo fotograma
+    this.inputSystem.lateUpdate();
+  }
+
+  createGameObjects() {
+    // Crear los objetos del juego normal
     const bloqueConfig = {
       FilasBloques: 4,
       ColumnasBloques: 4,
@@ -96,61 +142,29 @@ export class Game extends Scene {
       ColorBloque: 0xffffff
     };
     this.bloques = new BloqueGroup(this, bloqueConfig);
-
-    // --- Físicas y Colisiones ---
+    
+    // Crear campo estabilizador
+    this.CampoEstabilizador = new CampoEstabilizador(this, this.particula, this.uiManager);
+    
+    // Configurar colisiones
     this.physics.world.setBoundsCollision(false, false, true, true);
     this.particula.body.onWorldBounds = true;
-    this.physics.world.on('worldbounds', () => this.sounds.ParticulaRebota.play());
+    this.physics.world.on('worldbounds', (body, up, down, left, right) => {
+        if (body.gameObject === this.particula && (up || down)) {
+            this.sounds.ParticulaRebota.play();
+        }
+    });
 
     const processPalaCollision = () => !this.particula.isPegada;
     this.physics.add.collider(this.particula, this.pala1.getHitboxGroup(), this.ReboteParticula, processPalaCollision, this);
     this.physics.add.collider(this.particula, this.pala2.getHitboxGroup(), this.ReboteParticula, processPalaCollision, this);
     this.physics.add.collider(this.particula, this.bloques, this.GolpeBloque, null, this);
 
+    // Pegar la partícula al ganador
     this.ResetParticulaParaServir(this.jugadorParaServir);
-
-    // --- Campo Estabilizador ---
-    this.CampoEstabilizador = new CampoEstabilizador(this, this.particula, [this.pala1, this.pala2], this.uiManager);
-  }
-
-  update(time, delta) {
-    // Actualizar el sistema de entrada PRIMERO
-    this.inputSystem.update();
-
-    // Comprobar si se ha pulsado el botón de intercambio de jugadores
-    if (this.inputSystem.isSwapButtonPressed()) {
-      // La lógica de intercambio de teclas está dentro de InputSystem
-      this.inputSystem.swapPlayers();
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
-    if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
-
-    this.pala1.update(delta);
-    this.pala2.update(delta);
     
-    this.uiManager.updateDebugTexts(this.pala1, this.pala2);
-    
-    // Actualizar la UI de controles si está visible
-    if (this.controlsUI.allUIElements[0].visible) {
-        this.controlsUI.update();
-    }
-
-    if (this.particula.isPegada) {
-      const palaActiva = (this.jugadorParaServir === 1) ? this.pala1 : this.pala2;
-      this.particula.actualizarPosicionPegada(palaActiva);
-
-      // Comprobar si CUALQUIER jugador pulsa la acción de lanzar
-      const playerKey = this.jugadorParaServir === 1 ? 'player1' : 'player2';
-      if (this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, playerKey) || this.inputSystem.isDown(INPUT_ACTIONS.NORTH, playerKey)) {
-        this.particula.lanzar(palaActiva, this.jugadorParaServir);
-      }
-    } else {
-      this.ComprobarPunto();
-    }
-
-    // Guardar el estado de entrada para el próximo fotograma
-    this.inputSystem.lateUpdate();
+    // Mostrar puntuaciones y tutorial
+    this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
   }
 
   ReboteParticula(particula, circulo) {
@@ -197,7 +211,6 @@ export class Game extends Scene {
     }
 
     if (scored) {
-      // ACTUALIZACIÓN DE PUNTUACIÓN DELEGADA A UIManager
       this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
       this.ResetParticulaParaServir(this.jugadorParaServir);
     }
