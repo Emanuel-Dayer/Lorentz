@@ -1,10 +1,16 @@
 import { Scene } from "phaser";
+
+// Importar las clases de los objetos del juego
 import { Pala } from "../../objects/Pala";
 import { Particula } from "../../objects/Particula";
 import { BloqueGroup } from "../../objects/BloqueGroup";
+import CampoEstabilizador from '../../objects/CampoEstabilizador.js';
+
+// Utilidades para la UI y el sistema de entrada
 import { UIManager } from "../utils/UIManager";
 import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
 import { ControlsStatusUI } from "../utils/ControlsStatusUI";
+
 
 // La clase Game contiene toda la lógica de la escena principal
 export class Game extends Scene {
@@ -102,6 +108,9 @@ export class Game extends Scene {
     this.physics.add.collider(this.particula, this.bloques, this.GolpeBloque, null, this);
 
     this.ResetParticulaParaServir(this.jugadorParaServir);
+
+    // --- Campo Estabilizador ---
+    this.CampoEstabilizador = new CampoEstabilizador(this, this.particula, [this.pala1, this.pala2], this.uiManager);
   }
 
   update(time, delta) {
@@ -163,6 +172,10 @@ export class Game extends Scene {
     const velYNormalizada = (direccionY / magnitudVector) * this.VelocidadParticula;
     this.particula.body.setVelocity(velXNormalizada, velYNormalizada);
     this.sounds.ParticulaRebota.play();
+
+    if (this.CampoEstabilizador) {
+      this.CampoEstabilizador.registerHit();
+    }
   }
 
   GolpeBloque(particula, bloque) {

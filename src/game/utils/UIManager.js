@@ -15,7 +15,7 @@ export class UIManager {
     this.scoreTextP2 = scene.add.text(gameWidth * 0.75, 50, 'P2: 0', { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
     // --- Texto de Tutorial ---
-    this.tutorialText = scene.add.text(gameWidth / 2, gameHeight - 50, "P1: W/S (Mover), A/D (Rotar) | P2: Flechas (Mover/Rotar). ESPACIO para lanzar. P para Debug.",
+    this.tutorialText = scene.add.text(gameWidth / 2, gameHeight - 200, "P1: W/S (Mover), A/D (Rotar) | P2: Flechas (Mover/Rotar). ESPACIO para lanzar. P para Debug.",
       { fontSize: "30px", fill: "#fff", fontStyle: "bold", stroke: "#000", strokeThickness: 6 }
     ).setOrigin(0.5);
 
@@ -23,6 +23,7 @@ export class UIManager {
     const debugStyle = { fontSize: '24px', fill: '#910290', fontStyle: 'bold' };
     this.debugTextP1 = scene.add.text(0, 0, '', debugStyle).setOrigin(0.5, 1).setVisible(false);
     this.debugTextP2 = scene.add.text(0, 0, '', debugStyle).setOrigin(0.5, 1).setVisible(false);
+    this.hitCountText = scene.add.text(gameWidth / 2, 100, 'Toques: 0', debugStyle).setOrigin(0.5).setVisible(false);
   }
 
   /**
@@ -42,6 +43,7 @@ export class UIManager {
   setDebugVisibility(isVisible) {
     this.debugTextP1.setVisible(isVisible);
     this.debugTextP2.setVisible(isVisible);
+    this.hitCountText.setVisible(isVisible);
   }
 
   /**
@@ -59,5 +61,15 @@ export class UIManager {
     const palaVisual2 = pala2.getVisualObject();
     this.debugTextP2.setText(`Angulo: ${pala2.getLogicalRotation().toFixed(1)}°`);
     this.debugTextP2.setPosition(palaVisual2.x, palaVisual2.y - (palaVisual2.height / 2) - 20);
+  }
+
+  /**
+   * Actualiza el texto de conteo de toques.
+   * @param {number} count
+   */
+  updateHitCount(count) {
+    if (this.hitCountText.visible) {
+      this.hitCountText.setText('Toques: ' + count);
+    }
   }
 }
