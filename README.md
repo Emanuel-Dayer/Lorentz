@@ -17,7 +17,7 @@
 ## ⌨️ Controles
 
 ## 👾 Link al juego
-<a href="https://valentincantarrutti.github.io/Lorentz/">
+<a href="#">
   Haz clic aquí para jugar en tu navegador
 </a>
 
