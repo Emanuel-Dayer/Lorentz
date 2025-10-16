@@ -61,6 +61,11 @@ export class Game extends Scene {
     this.puntuacionP2 = 0;
 
     this.sounds = {};
+
+    // --- Estados del juego ---
+    this.gameState = 'PLAYING'; // 'PLAYING', 'TUG_OF_WAR', 'PAUSED'
+    this.contestedParticula = null;
+    this.tugOfWarText = null;
   }
 
   create() {
@@ -115,16 +120,25 @@ export class Game extends Scene {
     }
 
     // Lógica principal del juego
-    if (this.particula.isPegada) {
-      const palaActiva = (this.jugadorParaServir === 1) ? this.pala1 : this.pala2;
-      this.particula.actualizarPosicionPegada(palaActiva);
+    if (this.gameState === 'PLAYING') {
+      if (this.particula.isPegada) {
+        const palaActiva = (this.jugadorParaServir === 1) ? this.pala1 : this.pala2;
+        this.particula.actualizarPosicionPegada(palaActiva);
 
-      const playerKey = this.jugadorParaServir === 1 ? 'player1' : 'player2';
-      if (this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, playerKey)) {
-        this.particula.lanzar(palaActiva, this.jugadorParaServir);
+        const playerKey = this.jugadorParaServir === 1 ? 'player1' : 'player2';
+        if (this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, playerKey)) {
+          this.particula.lanzar(palaActiva, this.jugadorParaServir);
+        }
+      } else {
+        this.ComprobarPunto();
       }
-    } else {
-      this.ComprobarPunto();
+    } else if (this.gameState === 'TUG_OF_WAR') {
+      this.updateTugOfWarState();
+    }
+
+    // Actualizar el estado 'TUG_OF_WAR' si es necesario
+    if (this.gameState === 'TUG_OF_WAR') {
+      this.updateTugOfWarState();
     }
 
     // Guardar el estado de entrada para el próximo fotograma
@@ -142,6 +156,7 @@ export class Game extends Scene {
       ColorBloque: 0xffffff
     };
     this.bloques = new BloqueGroup(this, bloqueConfig);
+    this.bloques.config = bloqueConfig; // Guardar config para referencia futura
     
     // Crear campo estabilizador
     this.CampoEstabilizador = new CampoEstabilizador(this, this.particula, this.uiManager);
@@ -166,6 +181,63 @@ export class Game extends Scene {
     // Mostrar puntuaciones y tutorial
     this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
   }
+
+  // =================================================================
+  // LÓGICA DE ESTADO TUG_OF_WAR
+  // =================================================================
+
+  enterTugOfWarState() {
+    this.gameState = 'TUG_OF_WAR';
+
+    // Pausar la partícula principal
+    this.particula.body.stop();
+    this.particula.setVisible(false);
+
+    const gameWidth = this.sys.game.config.width;
+    const gameHeight = this.sys.game.config.height;
+
+    // Crear la partícula disputada
+    this.contestedParticula = new Particula(this, gameWidth / 2, gameHeight / 2, 35, {});
+    this.contestedParticula.body.setImmovable(true).setVelocity(0, 0);
+
+    // Mostrar texto de 'Tira y Afloja'
+    this.tugOfWarText = this.add.text(gameWidth / 2, gameHeight / 2 - 100, '¡PULSA ACCIÓN PARA RECLAMAR LA PARTÍCULA!', {
+      fontSize: '32px', fill: '#ffff00', fontStyle: 'bold', stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5);
+  }
+
+  updateTugOfWarState() {
+    let winner = null;
+    if (this.inputSystem.isJustPressed(INPUT_ACTIONS.SOUTH, 'player1')) {
+      winner = 1;
+    } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.SOUTH, 'player2')) {
+      winner = 2;
+    }
+
+    if (winner) {
+      this.exitTugOfWarState(winner);
+    }
+  }
+
+  exitTugOfWarState(winner) {
+    this.gameState = 'PLAYING';
+    this.jugadorParaServir = winner;
+
+    // La partícula disputada se convierte en la principal
+    const newParticulaPos = this.contestedParticula.getCenter();
+    this.particula.setPosition(newParticulaPos.x, newParticulaPos.y);
+    this.particula.setVisible(true);
+
+    // Limpiar los objetos del estado 'Tira y Afloja'
+    this.contestedParticula.destroy();
+    this.contestedParticula = null;
+    this.tugOfWarText.destroy();
+    this.tugOfWarText = null;
+
+    // Pegar la nueva partícula al ganador
+    this.ResetParticulaParaServir(winner);
+  }
+
 
   ReboteParticula(particula, circulo) {
     const palaVisual = circulo.parentPala;
@@ -194,7 +266,12 @@ export class Game extends Scene {
 
   GolpeBloque(particula, bloque) {
     this.sounds.ColisionObstaculo.play();
+    const rowIndex = bloque.rowIndex;
     bloque.destroy();
+
+    if (this.bloques.checkAndHandleCompletedRow(rowIndex)) {
+      this.enterTugOfWarState();
+    }
   }
 
   ComprobarPunto() {

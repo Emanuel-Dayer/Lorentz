@@ -53,7 +53,7 @@ export class Preload extends Scene {
   // Usamos init para tareas muy rápidas y configuración visual
   init() {
     // Establecer el color de fondo a negro
-    this.cameras.main.setBackgroundColor('#000000');
+    this.cameras.main.setBackground
   }
   
   /**
@@ -122,6 +122,7 @@ export class Preload extends Scene {
       // Carga de sonidos
       this.load.audio('ParticulaRebota', 'ParticulaRebota.wav');
       this.load.audio('ColisionObstaculo', 'ColisionObstaculo.wav');
+      this.load.audio('menuMusic', 'Coop_Loop.mp3');
       
     
     // -----------------------------------------------------

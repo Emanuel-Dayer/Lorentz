@@ -63,9 +63,17 @@ export default class InitialMenu extends Phaser.Scene {
     ).setStrokeStyle(6, 0xffffff, 1) // Borde blanco
     .setVisible(false);
     
+    //tocar la musica del juego
+    this.menuMusic = this.sound.add('menuMusic', { loop: true, volume: 0.5 });
+    this.menuMusic.play();
+
     // Asigna el manejador de click al botón principal
     this.#nextButton.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => {
-        this.scene.start("PreGame", { language: this.language });
+      if (this.menuMusic && this.menuMusic.isPlaying) {
+          this.menuMusic.stop(); // ✅ Detener música del menú antes de cambiar de escena
+      }
+
+      this.scene.start("PreGame", { language: this.language });
     });
       
     // Efectos Hover con Delineado para 'Next'
