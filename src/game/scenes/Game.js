@@ -59,6 +59,8 @@ export class Game extends Scene {
     this.jugadorParaServir = jugadorParaServir || 1; // Recibe al ganador o usa 1 por defecto
     this.puntuacionP1 = 0;
     this.puntuacionP2 = 0;
+    this.PUNTOS_PARA_GANAR = 5;
+    this.juegoFinalizado = false;
 
     this.sounds = {};
 
@@ -275,23 +277,34 @@ export class Game extends Scene {
   }
 
   ComprobarPunto() {
-    const gameWidth = this.sys.game.config.width;
-    let scored = false;
-    if (this.particula.x < -100) {
-      this.puntuacionP2++;
-      this.jugadorParaServir = 1;
-      scored = true;
-    } else if (this.particula.x > gameWidth + 100) {
-      this.puntuacionP1++;
-      this.jugadorParaServir = 2;
-      scored = true;
-    }
+  if (this.juegoFinalizado) return; // No hacer nada si ya terminó el juego
 
-    if (scored) {
-      this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
+  const gameWidth = this.sys.game.config.width;
+  let scored = false;
+
+  if (this.particula.x < -100) {
+    this.puntuacionP2++;
+    this.jugadorParaServir = 1;
+    scored = true;
+  } else if (this.particula.x > gameWidth + 100) {
+    this.puntuacionP1++;
+    this.jugadorParaServir = 2;
+    scored = true;
+  }
+
+  if (scored) {
+    this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
+
+    // Verificar condición de victoria
+    if (this.puntuacionP1 >= this.PUNTOS_PARA_GANAR) {
+      this.MostrarMensajeVictoria(1);
+    } else if (this.puntuacionP2 >= this.PUNTOS_PARA_GANAR) {
+      this.MostrarMensajeVictoria(2);
+    } else {
       this.ResetParticulaParaServir(this.jugadorParaServir);
     }
   }
+}
 
   ResetParticulaParaServir(jugador) {
     const palaActiva = (jugador === 1) ? this.pala1 : this.pala2;
@@ -319,4 +332,26 @@ export class Game extends Scene {
     // Y también de la UI de controles
     this.controlsUI.setVisible(this.physics.world.drawDebug);
   }
+
+  MostrarMensajeVictoria(jugadorGanador) {
+  this.juegoFinalizado = true;
+  this.particula.body.setVelocity(0, 0);
+  this.particula.setVisible(false);
+
+  const mensaje = `Jugador ${jugadorGanador} ganó\nPresiona 'R' para reiniciar`;
+  
+  this.textoVictoria = this.add.text(
+    this.sys.game.config.width / 2,
+    this.sys.game.config.height / 2,
+    mensaje,
+    {
+      fontSize: '48px',
+      fill: '#ffffff',
+      fontFamily: 'Arial',
+      align: 'center',
+      backgroundColor: '#000000',
+      padding: { x: 20, y: 20 }
+    }
+  ).setOrigin(0.5);
+}
 }

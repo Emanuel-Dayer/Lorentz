@@ -17,7 +17,7 @@
 ## ⌨️ Controles
 
 ## 👾 Link al juego
-<a href="#">
+<a href="https://lorentz-blue.vercel.app/">
   Haz clic aquí para jugar en tu navegador
 </a>
 
