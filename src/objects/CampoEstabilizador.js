@@ -1,9 +1,14 @@
 import { Physics } from "phaser";
 
 export default class CampoEstabilizador {
-  constructor(scene, Particula, uiManager) {
+  /**
+   * @param {Phaser.Scene} scene La escena de Phaser (Game).
+   * @param {Phaser.GameObjects.Group} particulas El grupo de partículas.
+   * @param {UIManager} uiManager El gestor de la interfaz.
+   */
+  constructor(scene, particulas, uiManager) {
     this.scene = scene;
-    this.Particula = Particula;
+    this.particulas = particulas;
     this.uiManager = uiManager;
     this.hitCount = 0;
 
@@ -41,22 +46,19 @@ export default class CampoEstabilizador {
     ).setDepth(0);
     scene.physics.add.existing(this.rightBlock, true)
 
-    scene.physics.add.collider(Particula, this.leftBlock);
-    scene.physics.add.collider(Particula, this.rightBlock);
+    // Colisión con los bloques de esquina (rebotan)
+    scene.physics.add.collider(this.particulas, this.leftBlock);
+    scene.physics.add.collider(this.particulas, this.rightBlock);
 
-    // Colisión con la barrera energética
-    scene.physics.add.collider(Particula, this.barrier, () => {
-      if (this.hitCount >= 5) {
-        console.log('Bola no es destruida');
-      } else {
-        Particula.destroy();
-        console.log('Bola es destruida');
+    // Colisión con la barrera inferior (dispara la lógica especial)
+    // CORRECCIÓN: Usamos un callback para emitir el evento a la clase Game,
+    // pasando la instancia de la partícula.
+    scene.physics.add.collider(this.particulas, this.barrier, (particula, barrier) => {
+      // Solo manejamos la colisión si la partícula está en estado NORMAL
+      if (particula.state === 'normal') {
+        this.scene.events.emit('particleHitBarrier', particula);
       }
-    });
-}
-
-  registerHit() {
-    this.hitCount++;
-    this.uiManager.updateHitCount(this.hitCount);
+    }, null, this);
   }
+
 }

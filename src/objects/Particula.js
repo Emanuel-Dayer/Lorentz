@@ -1,6 +1,15 @@
 import { Scene } from "phaser";
 import { Pala } from "./Pala";
 
+export const PARTICLE_STATE = {
+  NORMAL: "normal",
+  PEGADA: "pegada",
+  RECLAMABLE: "reclamable",
+};
+
+// Nueva constante para el tope de toques individuales
+const MAX_HITS = 5;
+
 export class Particula extends Phaser.GameObjects.Arc {
   /**
    * @param {Scene} scene La escena de Phaser.
@@ -19,8 +28,24 @@ export class Particula extends Phaser.GameObjects.Arc {
     scene.physics.add.existing(this);
 
     this.config = config;
-    this.isPegada = false;
+    this.state = PARTICLE_STATE.NORMAL; // Estado inicial
     this.velocidadVerticalPegada = 0;
+    this.lastPlayerHit = null; // 'player1' o 'player2'
+    this.hitCount = 0;
+    this.radius = radius; // Guardamos el radio para cálculo de espaciado
+
+    // Texto para el contador de toques (individual por partícula)
+    this.hitCountText = scene.add.text(this.x, this.y, '0', {
+        fontSize: '32px', // Más pequeño para que quepa bien dentro o sobre la partícula
+        fill: '#ffffff',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6
+    }).setOrigin(0.5).setDepth(9999); 
+    
+    // El texto solo es visible si el debug de la escena ya está activo.
+    this.hitCountText.setVisible(scene.physics.world.drawDebug); 
+
 
     // Configuración del cuerpo físico
     this.body.setCircle(radius);
@@ -34,9 +59,9 @@ export class Particula extends Phaser.GameObjects.Arc {
    * @param {number} jugadorParaServir El jugador que lanza (1 o 2).
    */
   lanzar(palaActiva, jugadorParaServir) {
-    if (!this.isPegada) return;
+    if (this.state !== PARTICLE_STATE.PEGADA) return;
 
-    this.isPegada = false;
+    this.state = PARTICLE_STATE.NORMAL;
     const palaVisual = palaActiva.getVisualObject();
     const rotationLogica = palaActiva.getLogicalRotation();
 
@@ -65,35 +90,55 @@ export class Particula extends Phaser.GameObjects.Arc {
    * @param {Pala} palaActiva La pala a la que se pega.
    */
   pegar(palaActiva) {
-    this.isPegada = true;
+    this.state = PARTICLE_STATE.PEGADA;
     this.body.setVelocity(0, 0);
     this.velocidadVerticalPegada = 0;
-    this.actualizarPosicionPegada(palaActiva); // Posiciona la bola inmediatamente
+    this.hitCount = 0; // Se resetea la carga al pegar
+    this.hitCountText.setText(0);
+    // Ya no se llama a actualizarPosicionPegada aquí, se llama en el update de Game
   }
 
   /**
    * Actualiza la posición de la partícula cuando está pegada a una pala.
    * @param {Pala} palaActiva La pala que está siguiendo.
+   * @param {number} index El índice de la partícula en el stack (0, 1, 2...).
    */
-  actualizarPosicionPegada(palaActiva) {
-    if (!this.isPegada) return;
+  actualizarPosicionPegada(palaActiva, index) {
+    if (this.state !== PARTICLE_STATE.PEGADA) return;
 
     const palaVisual = palaActiva.getVisualObject();
     
-    // Simula un efecto de resorte/gravedad hacia el centro de la pala
-    const atraccionHaciaCentroPala = (palaVisual.y - this.y) * 0.05;
+    // --- Lógica de Espaciado Vertical ---
+    // Posiciona la partícula por debajo o por encima del centro de la pala.
+    // Index 0 (la primera) está en el centro.
+    // Index 1 está a 2*radio + 10px arriba.
+    // Index 2 está a 2*radio + 10px abajo.
+    const separation = (this.radius * 2) + 30;
+    let targetYOffset = 0;
+
+    if (index === 1) {
+        targetYOffset = -separation;
+    } else if (index === 2) {
+        targetYOffset = separation;
+    }
+    // Si hay más de 3, las que pasen el límite (pero deberían ser destruidas antes) se apilan en el centro
+    
+    // Simula un efecto de resorte/gravedad hacia la posición objetivo de la pala
+    const atraccionHaciaCentroPala = (palaVisual.y + targetYOffset - this.y) * 0.05;
     const friccion = this.velocidadVerticalPegada * 0.2;
     this.velocidadVerticalPegada += atraccionHaciaCentroPala - friccion;
 
     // Limita el movimiento vertical de la particula a lo largo de la pala
     const limitY = palaVisual.height / 2 - this.radius - 10;
-    this.velocidadVerticalPegada = Phaser.Math.Clamp(this.velocidadVerticalPegada, -limitY, limitY);
+    // La velocidad vertical solo debe controlar el "tambaleo" y no la posición
+    // La posición final Y será calculada por la palaVisual.y + targetYOffset
 
     // Calcula la posición relativa a la pala, teniendo en cuenta la rotación
     const offsetHorizontal = palaVisual.width / 2 + this.radius + 30;
     const dirFactor = palaActiva.isP1 ? 1 : -1;
     const localAnchorX = offsetHorizontal * dirFactor;
-    const localAnchorY = this.velocidadVerticalPegada;
+    // Usa la posición vertical que sigue la pala + el offset de apilamiento
+    const localAnchorY = targetYOffset;
     
     const anguloVisualRad = palaVisual.angle * Phaser.Math.DEG_TO_RAD;
     const deltaX = localAnchorX * Math.cos(anguloVisualRad) - localAnchorY * Math.sin(anguloVisualRad);
@@ -101,5 +146,67 @@ export class Particula extends Phaser.GameObjects.Arc {
     
     this.x = palaVisual.x + deltaX;
     this.y = palaVisual.y + deltaY;
+  }
+
+  reclamar(pala) {
+    if (this.state !== PARTICLE_STATE.RECLAMABLE) return;
+    
+    // Restaurar propiedades visuales y físicas
+    this.setStrokeStyle(5, 0xffffff); // Color de borde normal
+    this.body.setImmovable(false);
+
+    this.pegar(pala);
+    this.setDebugVisibility(this.scene.physics.world.drawDebug);
+  }
+
+  // --- Métodos para la nueva lógica ---
+
+  update() {
+    // Mantiene el texto del contador sobre la partícula SIEMPRE
+    this.hitCountText.setPosition(this.x, this.y);
+    this.hitCountText.setDepth(9999); 
+    // Aseguramos que el texto refleje el conteo
+    this.hitCountText.setText(this.hitCount); 
+  }
+
+  setLastPlayerHit(playerKey, color) {
+    this.lastPlayerHit = playerKey;
+    this.setStrokeStyle(5, color);
+    // Usamos el color hexadecimal para el texto también
+    this.hitCountText.setColor(`#${color.toString(16).padStart(6, '0')}`);
+  }
+
+  incrementHitCount() {
+    // FIX: Solo incrementamos si el contador es menor que el tope (5)
+    if (this.hitCount < MAX_HITS) {
+        this.hitCount++;
+    }
+    this.hitCountText.setText(this.hitCount);
+    // Retornamos el nuevo conteo para que la clase Game pueda tomar decisiones
+    return this.hitCount;
+  }
+  
+  decrementHitCount() {
+    // Nueva función para descargar la partícula
+    if (this.hitCount > 0) {
+      this.hitCount--;
+    }
+    this.hitCountText.setText(this.hitCount);
+    return this.hitCount;
+  }
+
+  getHitCount() {
+    return this.hitCount;
+  }
+  
+  setDebugVisibility(isVisible) {
+    // Controla la visibilidad del texto basado en el estado de debug
+    this.hitCountText.setVisible(isVisible);
+  }
+
+  destroy(fromScene) {
+    // Asegurarse de que el texto también se destruya
+    if (this.hitCountText) this.hitCountText.destroy();
+    super.destroy(fromScene);
   }
 }

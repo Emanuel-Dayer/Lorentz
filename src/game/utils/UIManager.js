@@ -23,7 +23,7 @@ export class UIManager {
     const debugStyle = { fontSize: '24px', fill: '#910290', fontStyle: 'bold' };
     this.debugTextP1 = scene.add.text(0, 0, '', debugStyle).setOrigin(0.5, 1).setVisible(false);
     this.debugTextP2 = scene.add.text(0, 0, '', debugStyle).setOrigin(0.5, 1).setVisible(false);
-    this.hitCountText = scene.add.text(gameWidth / 2, 100, 'Toques: 0', debugStyle).setOrigin(0.5).setVisible(false);
+    this.particleCountText = scene.add.text(gameWidth / 2, 20, 'Partículas: 0', debugStyle).setOrigin(0.5).setVisible(false);
   }
 
   /**
@@ -43,15 +43,16 @@ export class UIManager {
   setDebugVisibility(isVisible) {
     this.debugTextP1.setVisible(isVisible);
     this.debugTextP2.setVisible(isVisible);
-    this.hitCountText.setVisible(isVisible);
+    this.particleCountText.setVisible(isVisible);
   }
 
   /**
    * Actualiza el contenido y la posición de los textos de depuración.
    * @param {Pala} pala1
    * @param {Pala} pala2
+   * @param {number} particleCount
    */
-  updateDebugTexts(pala1, pala2) {
+  updateDebugTexts(pala1, pala2, particleCount) {
     if (!this.debugTextP1.visible) return;
 
     const palaVisual1 = pala1.getVisualObject();
@@ -61,6 +62,8 @@ export class UIManager {
     const palaVisual2 = pala2.getVisualObject();
     this.debugTextP2.setText(`Angulo: ${pala2.getLogicalRotation().toFixed(1)}°`);
     this.debugTextP2.setPosition(palaVisual2.x, palaVisual2.y - (palaVisual2.height / 2) - 20);
+
+    this.particleCountText.setText(`Partículas: ${particleCount}`);
   }
 
   /**
@@ -68,6 +71,7 @@ export class UIManager {
    * @param {number} count
    */
   updateHitCount(count) {
-    this.hitCountText.setText('Toques: ' + count);
+    // Este método ya no es necesario, el conteo es individual por partícula.
+    // Se mantiene por si se reutiliza en el futuro.
   }
 }
