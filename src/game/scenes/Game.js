@@ -5,6 +5,7 @@ import { Pala } from "../../objects/Pala";
 import { Particula, PARTICLE_STATE } from "../../objects/Particula";
 import { BloqueGroup } from "../../objects/BloqueGroup";
 import CampoEstabilizador from '../../objects/CampoEstabilizador.js';
+import LineaControl from '../../objects/LineaControl.js';
 
 // Utilidades para la UI y el sistema de entrada
 import { UIManager } from "../utils/UIManager";
@@ -19,8 +20,8 @@ export class Game extends Scene {
 
     // Constantes de rotación (se pasarán a las instancias de las Palas)
     this.MAX_ROTATION_DEG = 55;
-    this.DEAD_ZONE_DEG = 5;
-    this.ROTATION_SPEED = 1.5;
+    this.DEAD_ZONE_DEG = 15;
+    this.ROTATION_SPEED = 2.5;
     this.RETURN_SPEED = 0.8;
     this.CIRCLES_DENSITY = 15;
     
@@ -34,8 +35,8 @@ export class Game extends Scene {
       [INPUT_ACTIONS.LEFT]: 'A',
       [INPUT_ACTIONS.RIGHT]: 'D',
       [INPUT_ACTIONS.NORTH]: 'SPACE', // △: Lanza la particula
-      [INPUT_ACTIONS.SOUTH]: 'E', // ◯: Reclamar particula
-      [INPUT_ACTIONS.EAST]: 'E',      // ✕:
+      [INPUT_ACTIONS.SOUTH]: 'SHIFT', // ◯: Reclamar particula
+      [INPUT_ACTIONS.EAST]: 'E',      // ✕: Crear una linea entre la paleta y las particulas
       [INPUT_ACTIONS.WEST]: 'Q',      // ▢:
     };
 
@@ -46,7 +47,7 @@ export class Game extends Scene {
       [INPUT_ACTIONS.RIGHT]: 'RIGHT',
       [INPUT_ACTIONS.NORTH]: 'NUMPAD_ZERO', // △: Lanza la particula
       [INPUT_ACTIONS.SOUTH]: 'NUMPAD_ONE',  // ◯: Reclamar particula
-      [INPUT_ACTIONS.EAST]: 'NUMPAD_THREE', // ✕:
+      [INPUT_ACTIONS.EAST]: 'NUMPAD_THREE', // ✕: Crear una linea entre la paleta y las particulas
       [INPUT_ACTIONS.WEST]: 'NUMPAD_TWO',   // ▢:
     };
   }
@@ -57,7 +58,7 @@ export class Game extends Scene {
     this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
     // --- Variables de Juego ---
-    this.VelocidadPala = 900;
+    this.VelocidadPala = 1200;
     this.VelocidadParticula = 900;
     this.jugadorParaServir = jugadorParaServir || 1; // Recibe al ganador o usa 1 por defecto
     this.puntuacionP1 = 0;
@@ -85,6 +86,9 @@ export class Game extends Scene {
     this.controlsUI = new ControlsStatusUI(this, this.inputSystem);
     this.controlsUI.setVisible(false);
 
+  // Controlador de líneas (bezier rectas) entre palas y partículas
+  this.lineaControl = new LineaControl(this);
+
     // Crear palas
     this.pala1 = new Pala(this, 100, gameHeight / 2, 'player1');
     this.pala2 = new Pala(this, gameWidth - 100, gameHeight / 2, 'player2');
@@ -105,6 +109,14 @@ export class Game extends Scene {
   update(time, delta) {
     // Actualizar el sistema de entrada PRIMERO
     this.inputSystem.update();
+
+    // Manejo del toggle EAST: cada jugador controla sus propias líneas
+    if (this.inputSystem.isJustPressed(INPUT_ACTIONS.EAST, 'player1')) {
+      this.lineaControl.toggleForPlayer('player1');
+    }
+    if (this.inputSystem.isJustPressed(INPUT_ACTIONS.EAST, 'player2')) {
+      this.lineaControl.toggleForPlayer('player2');
+    }
 
     // Comprobar si se ha pulsado el botón de intercambio de jugadores
     if (this.inputSystem.isSwapButtonPressed()) {
@@ -187,10 +199,15 @@ export class Game extends Scene {
           // Lógica de reclamación centralizada, no se hace aquí.
           break;
       }
+
+      // Nota: la gestión de creación/elim. de líneas se hace dentro de LineaControl.update
     });
     
     // Manejar la lógica de reclamación de forma centralizada.
     this.handleClaimAttempt();
+
+  // Actualizar el sistema de dibujado de líneas (pasa delta para efectos físicos)
+  this.lineaControl.update(delta);
 
     // Guardar el estado de entrada para el próximo fotograma
     this.inputSystem.lateUpdate();
@@ -429,6 +446,8 @@ export class Game extends Scene {
     }
 
     if (scored || outOfBounds) {
+      // Limpiar linea asociada si existe
+      if (this.lineaControl) this.lineaControl.removeLinea(particula);
       particula.destroy(); // Se destruye la partícula que salió o se fue fuera de límites
       
       if(scored) {
@@ -499,7 +518,8 @@ export class Game extends Scene {
         // --- Comportamiento si NO está CARGADA (< 5 toques) ---
         
         // 1. La partícula se destruye
-        particula.destroy();
+  if (this.lineaControl) this.lineaControl.removeLinea(particula);
+  particula.destroy();
         
         // 2. Punto para el contrincante
         if (opponentPlayer === 1) {
@@ -540,6 +560,8 @@ export class Game extends Scene {
 
   ResetParticulaParaServir(jugador) {
     // Destruye TODAS las partículas activas antes de crear la nueva, asegurando un único servicio
+    // Si existe lineaControl, limpiar todas las lineas primero
+    if (this.lineaControl) this.lineaControl.clearAll();
     this.particulas.getChildren().forEach(p => p.destroy());
     
     // Limpiar las partículas pegadas, ya que se destruyeron
@@ -589,6 +611,7 @@ export class Game extends Scene {
     this.juegoFinalizado = true;
     
     // 4. Limpieza: Destruir todas las partículas, pegadas o no.
+    if (this.lineaControl) this.lineaControl.clearAll();
     this.particulas.getChildren().forEach(p => p.destroy());
     
     // 5. Limpieza: Destruir el texto de reclamación si existe.

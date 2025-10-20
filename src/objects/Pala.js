@@ -37,6 +37,22 @@ export class Pala {
     this.createHitboxes();
   }
 
+  /**
+   * Activa o desactiva un borde dorado alrededor de la pala cuando tiene líneas activas
+   * @param {boolean} active
+   */
+  setLineHighlight(active) {
+    if (active) {
+      // Borde dorado más grueso
+      this.visual.setStrokeStyle(8, 0xFFD700);
+    } else {
+      // Volver al estilo por defecto
+      const defaultColor = this.isP1 ? 0x0000FF : 0xFF0000;
+      // Mantener el borde blanco del diseño original
+      this.visual.setStrokeStyle(5, 0xffffff);
+    }
+  }
+
   createHitboxes() {
     const radio = this.visual.width / 2;
     const alturaPala = this.visual.height;

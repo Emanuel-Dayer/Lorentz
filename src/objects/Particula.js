@@ -51,6 +51,13 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.body.setCircle(radius);
     this.body.setBounce(1, 1);
     this.body.setCollideWorldBounds(true);
+
+    // --- Estado para control por linea ---
+    this.lineActive = false;       // si la partícula está bajo control de una linea
+    this.lineTension = 0;         // 1..0, decrementa con el tiempo para "enderezar" la linea
+    this.lineCurvature = 0;       // curvatura actual (normalizada)
+    this.lineTargetCurvature = 0; // objetivo de curvatura por frame
+    this._maxLineVy = 1200;       // limite seguro para la velocidad vertical
   }
 
   /**
@@ -96,6 +103,47 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.hitCount = 0; // Se resetea la carga al pegar
     this.hitCountText.setText(0);
     // Ya no se llama a actualizarPosicionPegada aquí, se llama en el update de Game
+  }
+
+  // --- Métodos para el control por línea ---
+  enableLineControl(startTension = 1) {
+    this.lineActive = true;
+    this.lineTension = Phaser.Math.Clamp(startTension, 0, 1);
+  }
+
+  disableLineControl() {
+    this.lineActive = false;
+    this.lineTension = 0;
+    this.lineCurvature = 0;
+    this.lineTargetCurvature = 0;
+  }
+
+  /**
+   * Aplica el efecto de curvatura desde la línea sobre la partícula.
+   * curvature: valor -1..1 que indica dirección/intensidad base
+   * delta: tiempo en ms desde el último frame
+   */
+  applyLineEffect(curvature, delta) {
+    const dt = Math.max(0, delta) / 1000; // segundos
+
+    // Suavizamos la curvatura hacia la target
+    this.lineTargetCurvature = curvature || 0;
+    const smooth = Math.min(1, dt * 10);
+    this.lineCurvature += (this.lineTargetCurvature - this.lineCurvature) * smooth;
+
+    if (!this.lineActive || this.lineTension <= 0) return;
+
+    // Aplicar modificación a la velocidad vertical según curvatura y tensión
+    const maxCurvatureSpeed = 600; // píxeles/seg * máxima influencia cuando tension=1
+    const vyAdd = this.lineCurvature * maxCurvatureSpeed * this.lineTension * dt;
+
+    const newVy = Phaser.Math.Clamp(this.body.velocity.y + vyAdd, -this._maxLineVy, this._maxLineVy);
+    this.body.setVelocityY(newVy);
+
+    // La tensión decae con el tiempo (la linea "se endereza")
+    const decayPerSec = 0.25; // dura ~4s por defecto (ajustable)
+    this.lineTension = Math.max(0, this.lineTension - decayPerSec * dt);
+    if (this.lineTension === 0) this.lineActive = false;
   }
 
   /**
