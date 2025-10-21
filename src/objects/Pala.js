@@ -124,23 +124,75 @@ export class Pala {
   }
 
   updateVisuals() {
-    // El ángulo visual se deriva de la rotación lógica
-    const visualAngle = this.isP1 ? -this.logicalRotation : this.logicalRotation;
-    this.visual.setAngle(visualAngle);
+  const visualAngle = this.isP1 ? -this.logicalRotation : this.logicalRotation;
+  this.visual.setAngle(visualAngle);
 
-    // Actualizar la posición de los hitboxes
-    const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
-    this.hitboxes.children.iterate(circle => {
-      if (!circle.body) return; // Seguridad por si el círculo es destruido
-      
-      const localY = circle.localYOffset;
-      const newX = this.visual.x - localY * Math.sin(angleRad);
-      const newY = this.visual.y + localY * Math.cos(angleRad);
-      
-      // Usamos body.reset() para una sincronización instantánea
-      circle.body.reset(newX, newY);
+  const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
+  const scaleY = this.visual.scaleY;
+
+  this.hitboxes.children.iterate(circle => {
+    if (!circle.body) return;
+    const localY = circle.localYOffset;
+    const newX = this.visual.x - localY * Math.sin(angleRad);
+    const newY = this.visual.y + localY * Math.cos(angleRad);
+    circle.body.reset(newX, newY);
+  });
+}
+
+updateHitboxes() {
+  const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
+  const scaleY = this.visual.scaleY;
+
+  this.hitboxes.children.iterate(circle => {
+    if (!circle.body) return;
+    const localY = circle.localYOffset * scaleY;
+    const newX = this.visual.x - localY * Math.sin(angleRad);
+    const newY = this.visual.y + localY * Math.cos(angleRad);
+    circle.body.reset(newX, newY);
+  });
+}
+
+expandHitboxesGradualmente(extraCount = 4, duration = 2000) {
+  const radio = this.visual.width / 2;
+  const alturaPala = this.visual.height;
+  const numCirculos = this.CIRCLES_DENSITY;
+  const espaciado = numCirculos > 1 ? (alturaPala - radio * 2) / (numCirculos - 1) : 0;
+  const delayPerCircle = duration / extraCount;
+
+  const hitboxesArray = this.hitboxes.getChildren();
+  const topBase = hitboxesArray[0]?.localYOffset ?? -alturaPala / 2 + radio;
+  const bottomBase = hitboxesArray[hitboxesArray.length - 1]?.localYOffset ?? alturaPala / 2 - radio;
+
+  for (let i = 1; i <= extraCount; i++) {
+    this.scene.time.delayedCall(i * delayPerCircle, () => {
+      const offsetY = (espaciado * i) + (espaciado / 2);
+      const localYTop = topBase - offsetY;
+      const localYBottom = bottomBase + offsetY;
+
+      [localYTop, localYBottom].forEach(localY => {
+        const circle = this.scene.add.circle(this.visual.x, this.visual.y, radio, 0xffffff, 0).setVisible(false);
+        this.scene.physics.add.existing(circle);
+        circle.body.setCircle(radio).setImmovable(true).setMass(0.0001);
+        circle.localYOffset = localY;
+        circle.isP1 = this.isP1;
+        circle.parentPala = this.visual;
+        this.hitboxes.add(circle);
+      });
     });
   }
+}
+
+retractHitboxesGradualmente(originalCount, duration = 2000) {
+  const allCircles = this.hitboxes.getChildren();
+  const extraCircles = allCircles.slice(originalCount);
+  const delayPerCircle = duration / extraCircles.length;
+
+  extraCircles.forEach((circle, index) => {
+    this.scene.time.delayedCall(index * delayPerCircle, () => {
+      circle.destroy();
+    });
+  });
+}
 
   // --- Métodos de acceso para la escena ---
   getHitboxGroup() {

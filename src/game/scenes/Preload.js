@@ -119,6 +119,12 @@ export class Preload extends Scene {
       this.load.image('logo', 'logo.png');
       this.load.image('background', 'bg.png');
 
+      // imagenes de power Ups: 500x500px, vas a tener que hacerlos mas chicos despues
+      this.load.image('Caracol', 'Caracol.png');
+      this.load.image('Escudo', 'escudo.png');
+      this.load.image('Hielo', 'Hielo.png');
+      this.load.image('Paletas', 'paletas.png');
+
       // Carga de sonidos
       this.load.audio('ParticulaRebota', 'ParticulaRebota.wav');
       this.load.audio('ColisionObstaculo', 'ColisionObstaculo.wav');
