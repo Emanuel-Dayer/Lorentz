@@ -123,8 +123,14 @@ export class Preload extends Scene {
       this.load.audio('ParticulaRebota', 'ParticulaRebota.wav');
       this.load.audio('ColisionObstaculo', 'ColisionObstaculo.wav');
       this.load.audio('menuMusic', 'Coop_Loop.mp3');
-      
-    
+      this.load.audio('Ball', 'Ball.wav');
+      this.load.audio('BLockBreak', 'BLockBreak.wav');
+      this.load.audio('DestroyingParticle', 'DestroyingParticle.wav');
+      this.load.audio('NewParticle', 'NewParticle.wav');
+      this.load.audio('TouchingStabalizer', 'TouchingStabalizer.wav');
+      this.load.audio('TouchingStabalizer2', 'TouchingStabalizer2.wav');
+
+
     // -----------------------------------------------------
     // 5. CONFIGURACIÓN DE IDIOMA
     // -----------------------------------------------------
