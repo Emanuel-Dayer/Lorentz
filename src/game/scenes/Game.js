@@ -6,12 +6,12 @@ import { Particula, PARTICLE_STATE } from "../../objects/Particula";
 import { BloqueGroup } from "../../objects/BloqueGroup";
 import CampoEstabilizador from '../../objects/CampoEstabilizador.js';
 import LineaControl from '../../objects/LineaControl.js';
+import PowerUpPaleta from '../../objects/Paletapowerup.js';
 
 // Utilidades para la UI y el sistema de entrada
 import { UIManager } from "../utils/UIManager";
 import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
 import { ControlsStatusUI } from "../utils/ControlsStatusUI";
-
 
 // La clase Game contiene toda la lógica de la escena principal
 export class Game extends Scene {
@@ -101,12 +101,25 @@ export class Game extends Scene {
     // Crear palas
     this.pala1 = new Pala(this, 100, gameHeight / 2, 'player1');
     this.pala2 = new Pala(this, gameWidth - 100, gameHeight / 2, 'player2');
+
+    // Crear grupo de Power Ups
+    this.powerUps = this.add.group();
     
     // Crear grupo de partículas
     this.particulas = this.add.group({
       classType: Particula,
       runChildUpdate: true
     });
+
+    // Crear colisiones de Power Ups y Particulas
+
+    this.physics.add.overlap(
+    this.particulas,
+    this.powerUps,
+    this.handlePowerUpCollision,
+    null,
+    this
+    );
 
     // Subscribirse al evento del CampoEstabilizador
     this.events.on('particleHitBarrier', this.handleBarrierHit, this);
@@ -208,6 +221,9 @@ export class Game extends Scene {
           // Lógica de reclamación centralizada, no se hace aquí.
           break;
       }
+
+      //Actualizar Power Ups
+      this.powerUps.getChildren().forEach(pu => pu.update());
 
       // Nota: la gestión de creación/elim. de líneas se hace dentro de LineaControl.update
     });
@@ -425,17 +441,25 @@ export class Game extends Scene {
   }
 
   GolpeBloque(particula, bloque) {
-    this.sounds.BLockBreak.play();
-    const rowIndex = bloque.rowIndex;
-    bloque.destroy();
+  this.sounds.BLockBreak.play();
+  const rowIndex = bloque.rowIndex;
+  const { x, y } = bloque;
+  bloque.destroy();
 
-    if (this.bloques.checkAndHandleCompletedRow(rowIndex)) {
-      const gameWidth = this.sys.game.config.width;
-      const gameHeight = this.sys.game.config.height;
-      // crearNuevaParticula tiene una protección para no crear texto si el juego terminó.
-      this.crearNuevaParticula(gameWidth / 2, gameHeight / 2, PARTICLE_STATE.RECLAMABLE);
-    }
+  // Chance de 10% de soltar un Power Up
+  if (Phaser.Math.Between(1, 100) <= 10) {
+    const powerUp = new PowerUpPaleta(this, x, y);
+    this.add.existing(powerUp);
+    this.physics.add.existing(powerUp);
+    this.powerUps.add(powerUp); // Añade al grupo
   }
+
+  if (this.bloques.checkAndHandleCompletedRow(rowIndex)) {
+    const gameWidth = this.sys.game.config.width;
+    const gameHeight = this.sys.game.config.height;
+    this.crearNuevaParticula(gameWidth / 2, gameHeight / 2, PARTICLE_STATE.RECLAMABLE);
+  }
+}
 
   ComprobarPunto(particula) {
     // Si el juego ya finalizó, detenemos la lógica de puntuación para evitar bugs.
@@ -575,6 +599,19 @@ export class Game extends Scene {
     this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
     this.ComprobarVictoria(this.puntuacionP1, this.puntuacionP2);
   }
+
+handlePowerUpCollision(particula, powerUp) {
+  if (!particula || !powerUp || !particula.active || !powerUp.active) return;
+
+  const jugador = particula.lastPlayerHit;
+
+  if (jugador === 'player1' || jugador === 'player2') {
+    powerUp.onCollected(jugador);
+  } else {
+    console.warn('PowerUp no pudo determinar el jugador que lo recogió.');
+    powerUp.destroy(); // evita que quede flotando
+  }
+}
 
   ComprobarVictoria(p1Score, p2Score) {
     if (p1Score >= this.PUNTOS_PARA_GANAR) {
