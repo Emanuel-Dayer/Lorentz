@@ -34,6 +34,15 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.hitCount = 0;
     this.radius = radius; // Guardamos el radio para cálculo de espaciado
 
+    // Cooldown para evitar múltiples hits por las múltiples hitboxes de una pala
+    // Guarda timestamps (ms) del último hit por cada jugador
+    this._lastHitTime = {
+      player1: 0,
+      player2: 0
+    };
+    // Delay por defecto entre hits de la misma pala (ms)
+    this.HIT_COOLDOWN_MS = 200;
+
     // Texto para el contador de toques (individual por partícula)
     this.hitCountText = scene.add.text(this.x, this.y, '0', {
         fontSize: '32px', // Más pequeño para que quepa bien dentro o sobre la partícula
@@ -89,7 +98,7 @@ export class Particula extends Phaser.GameObjects.Arc {
     const velYNormalizada = (direccionY / magnitudVector) * this.config.VelocidadParticula;
     
     this.body.setVelocity(velXNormalizada, velYNormalizada);
-    this.scene.sounds.ParticulaRebota.play();
+    this.scene.sounds.Ball.play();
   }
 
   /**
@@ -222,6 +231,27 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.setStrokeStyle(5, color);
     // Usamos el color hexadecimal para el texto también
     this.hitCountText.setColor(`#${color.toString(16).padStart(6, '0')}`);
+  }
+
+  /**
+   * Comprueba si la partícula puede registrar un nuevo hit desde `playerKey` según cooldown.
+   * @param {string} playerKey 'player1'|'player2'
+   * @param {number} now timestamp en ms (ej: this.scene.time.now)
+   */
+  canAcceptHit(playerKey, now) {
+    if (!playerKey) return true;
+    const last = this._lastHitTime[playerKey] || 0;
+    return (now - last) >= this.HIT_COOLDOWN_MS;
+  }
+
+  /**
+   * Registra el timestamp del último hit para `playerKey`.
+   * @param {string} playerKey
+   * @param {number} now timestamp en ms
+   */
+  recordHitTime(playerKey, now) {
+    if (!playerKey) return;
+    this._lastHitTime[playerKey] = now;
   }
 
   incrementHitCount() {

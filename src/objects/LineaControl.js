@@ -304,11 +304,21 @@ export default class LineaControl {
     if (typeof entry.currentControlYOffset !== 'number') entry.currentControlYOffset = 0;
     if (typeof entry.tension !== 'number') entry.tension = LineaControl.CONFIG.MAX_TENSION;
 
-    // 1. Aplicar decaimiento de tensión
-    const dt = (delta || 16) / 1000;
-    entry.tension = Math.max(0, entry.tension - LineaControl.CONFIG.TENSION_DECAY * dt);
+      const dt = (delta || 16) / 1000;
 
-    // 2. Si hay tensión, seguir la rotación de la pala
+      // Detectar cambios en la rotación de la pala
+      const currentRotation = pala.getLogicalRotation();
+      if (!entry.lastRotation) entry.lastRotation = currentRotation;
+      const rotationDelta = Math.abs(currentRotation - entry.lastRotation);
+      
+      // Renovar tensión si hay rotación significativa
+      if (rotationDelta > 0.1) {
+        entry.tension = Math.min(entry.tension + rotationDelta * 0.5, LineaControl.CONFIG.MAX_TENSION);
+      }
+      entry.lastRotation = currentRotation;
+
+      // Aplicar decaimiento de tensión
+      entry.tension = Math.max(0, entry.tension - LineaControl.CONFIG.TENSION_DECAY * dt);    // 2. Si hay tensión, seguir la rotación de la pala
     if (entry.tension > 0) {
       const lerpFactor = Phaser.Math.Clamp(dt * LineaControl.CONFIG.LERP_SPEED, 0, 1);
       entry.currentControlYOffset = Phaser.Math.Interpolation.Linear(
@@ -316,13 +326,9 @@ export default class LineaControl {
         lerpFactor
       );
     } else {
-      // 3. Si no hay tensión, enderezar gradualmente
-      const straightenAmount = LineaControl.CONFIG.STRAIGHTEN_SPEED * dt * Math.sign(entry.currentControlYOffset);
-      if (Math.abs(entry.currentControlYOffset) < Math.abs(straightenAmount)) {
-        entry.currentControlYOffset = 0;
-      } else {
-        entry.currentControlYOffset -= straightenAmount * Math.abs(entry.currentControlYOffset);
-      }
+      // Enderezar gradualmente, manteniendo la capacidad de respuesta
+      const straightenAmount = LineaControl.CONFIG.STRAIGHTEN_SPEED * dt;
+      entry.currentControlYOffset *= (1 - straightenAmount);
     }
   }
 
