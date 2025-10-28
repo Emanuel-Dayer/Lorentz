@@ -77,9 +77,11 @@ export class PreGame extends Scene {
   update(time, delta) {
     this.inputSystem.update();
 
-    /*
+
     // Lógica de debug y swap
     if (this.inputSystem.isSwapButtonPressed()) this.inputSystem.swapPlayers();
+
+    /*
     if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
     */
