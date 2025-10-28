@@ -612,14 +612,6 @@ handlePowerUpCollision(particula, powerUp) {
   }
 }
 
-  ComprobarVictoria(p1Score, p2Score) {
-    if (p1Score >= this.PUNTOS_PARA_GANAR) {
-        this.MostrarMensajeVictoria(1);
-    } else if (p2Score >= this.PUNTOS_PARA_GANAR) {
-        this.MostrarMensajeVictoria(2);
-    }
-  }
-
   ResetParticulaParaServir(jugador) {
     // Destruye TODAS las partículas activas antes de crear las nuevas
     // Si existe lineaControl, limpiar todas las lineas primero
