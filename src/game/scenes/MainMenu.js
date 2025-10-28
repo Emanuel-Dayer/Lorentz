@@ -90,6 +90,13 @@ export default class MainMenu extends Phaser.Scene {
         // Crear contenedor principal
         this.mainContainer = this.add.container(0, 0);
 
+        // Crear el logo
+        this.logoLorentz = this.add.image(width/2, height/2 - 900, 'logoLorentz')
+            .setOrigin(0.5)
+            .setDepth(15)
+            .setAlpha(0)
+            .setScale(0.6); // Ajusta este valor según el tamaño que necesites
+
         // Crear sistema de partículas para transiciones
         this.createTransitionParticles();
 
@@ -566,6 +573,15 @@ export default class MainMenu extends Phaser.Scene {
             ease
         });
 
+        // Mostrar el logo con una animación suave
+        this.tweens.add({
+            targets: this.logoLorentz,
+            alpha: 1,
+            y: height/2 - 350,
+            duration: duration * 0.8,
+            ease: 'Power2'
+        });
+
         // Animar partícula al centro con efecto de rebote
         this.particula.setVisible(true);
         this.tweens.add({
@@ -799,6 +815,16 @@ export default class MainMenu extends Phaser.Scene {
         this.languageBlocks.forEach(block => block.container.setVisible(false));
         this.stabilizationField?.setVisible(false);
         this.sliders.forEach(slider => slider.setVisible(false));
+
+        // Ocultar el logo con una animación suave cuando no estamos en el menú central
+        if (this.currentState !== MENU_STATES.CENTRAL) {
+            this.tweens.add({
+                targets: this.logoLorentz,
+                alpha: 0,
+                duration: 300,
+                ease: 'Power2'
+            });
+        }
 
         // Primero ocultamos todas las flechas
         Object.values(this.navigationArrows).forEach(arrow => {

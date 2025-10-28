@@ -118,6 +118,8 @@ export class Preload extends Scene {
     this.load.setPath("assets");
       this.load.image('logo', 'logo.png');
       this.load.image('background', 'bg.png');
+      this.load.image('IconoLorentz', 'IconoLorentz.png');
+      this.load.image('logoLorentz', 'logoLorentz.png');
 
       // imagenes de power Ups: 500x500px, vas a tener que hacerlos mas chicos despues
       this.load.image('Caracol', 'Caracol.png');
