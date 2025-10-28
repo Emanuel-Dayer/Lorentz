@@ -9,7 +9,7 @@ export class PreGame extends Scene {
   constructor() {
     super("PreGame");
 
-    this.PULL_TARGET = 20;
+    this.PULL_TARGET = 5;
     this.PULL_STEP = 1;
     this.pullProgress = 0;
 
@@ -19,7 +19,7 @@ export class PreGame extends Scene {
     this.DEAD_ZONE_DEG = 5;
     this.ROTATION_SPEED = 1.5;
     this.RETURN_SPEED = 0.8;
-    this.CIRCLES_DENSITY = 15;
+    this.CIRCLES_DENSITY = 20; 
     this.VelocidadPala = 0; // No se mueven en esta escena
 
     // Mapeos de teclado (necesarios para el InputSystem)
@@ -47,7 +47,10 @@ export class PreGame extends Scene {
     // Ocultar UI no necesaria en esta escena
     this.uiManager.scoreTextP1.setVisible(false);
     this.uiManager.scoreTextP2.setVisible(false);
+    
+    /*
     this.uiManager.tutorialText.setVisible(false);
+    */
 
     this.controlsUI = new ControlsStatusUI(this, this.inputSystem);
     this.controlsUI.setVisible(false);
@@ -55,7 +58,8 @@ export class PreGame extends Scene {
     // Crear palas y partícula (visuales/estáticas)
     this.pala1 = new Pala(this, 100, gameHeight / 2, 'player1');
     this.pala2 = new Pala(this, gameWidth - 100, gameHeight / 2, 'player2');
-    this.particula = new Particula(this, gameWidth / 2, gameHeight / 2, 35, {});
+    // Modificado: Partícula más pequeña para consistencia
+    this.particula = new Particula(this, gameWidth / 2, gameHeight / 2, 20, {}); 
     this.particula.body.setImmovable(true).setVelocity(0, 0);
 
     // Textos de la UI para esta fase
@@ -63,19 +67,23 @@ export class PreGame extends Scene {
       fontSize: '48px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 6
     }).setOrigin(0.5);
 
+    /*
     this.add.text(gameWidth / 2, 180, `Pulsa repetidamente SHIFT/△ (J1) o NUM1/△ (J2)`, {
       fontSize: '32px', fill: '#ffff00'
     }).setOrigin(0.5);
+    */
   }
 
   update(time, delta) {
     this.inputSystem.update();
 
+    /*
     // Lógica de debug y swap
     if (this.inputSystem.isSwapButtonPressed()) this.inputSystem.swapPlayers();
     if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
-
+    */
+   
     this.pala1.update(delta);
     this.pala2.update(delta);
     this.uiManager.updateDebugTexts(this.pala1, this.pala2);

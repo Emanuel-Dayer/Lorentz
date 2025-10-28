@@ -26,7 +26,7 @@ export class Pala {
 
     // --- Creación de GameObjects ---
     const palaColor = this.isP1 ? 0x0000FF : 0xFF0000;
-    this.visual = scene.add.rectangle(x, y, 50, 300, palaColor).setStrokeStyle(5, 0xffffff);
+    this.visual = scene.add.rectangle(x, y, 20, 200, palaColor).setStrokeStyle(5, 0xffffff);
     this.hitboxes = scene.physics.add.group({ allowGravity: false });
 
     // --- Configuración de Físicas ---
@@ -42,43 +42,39 @@ export class Pala {
    * @param {boolean} active
    */
   setLineHighlight(active) {
-    if (active) {
-      // Borde dorado más grueso
-      this.visual.setStrokeStyle(8, 0xFFD700);
-    } else {
-      // Volver al estilo por defecto
-      const defaultColor = this.isP1 ? 0x0000FF : 0xFF0000;
-      // Mantener el borde blanco del diseño original
-      this.visual.setStrokeStyle(5, 0xffffff);
-    }
+    // Simplemente cambiamos el grosor y color del borde según el estado
+    this.visual.setStrokeStyle(active ? 8 : 5, active ? 0xFFD700 : 0xffffff);
   }
 
   createHitboxes() {
     const radio = this.visual.width / 2;
     const alturaPala = this.visual.height;
     const numCirculos = this.CIRCLES_DENSITY;
-    const espaciado = numCirculos > 1 ? (alturaPala - radio * 2) / (numCirculos - 1) : 0;
+    const espaciado = (alturaPala - radio * 2) / (numCirculos - 1);
     const startYOffset = -alturaPala / 2 + radio;
 
     for (let i = 0; i < numCirculos; i++) {
       const localY = startYOffset + (i * espaciado);
-      const circle = this.scene.add.circle(this.visual.x, this.visual.y, radio, 0xffffff, 0).setVisible(false);
+      const circle = this.scene.add.circle(this.visual.x, this.visual.y, radio, 0xffffff, 0)
+        .setVisible(false);
       
-      this.hitboxes.add(circle);
-
-      circle.body
-        .setCircle(radio)
-        .setImmovable(true)
-        .setCollideWorldBounds(false)
-        .setMass(0.0001);
-      
+      this.scene.physics.add.existing(circle);
+      circle.body.setCircle(radio);
+      circle.body.setImmovable(true);
+      circle.body.setCollideWorldBounds(false);
+      circle.body.allowGravity = false;
+      circle.body.moves = true;
+      circle.body.pushable = false;
       circle.body.customSeparateX = true;
       circle.body.customSeparateY = true;
+      circle.body.setMass(0.0001);
 
-      // Guardamos referencias en el círculo para la lógica de colisión
-      circle.parentPala = this.visual; // Referencia al objeto visual
-      circle.localYOffset = localY;   // Offset Y local para el rebote
-      circle.isP1 = this.isP1;        // Para saber el lado de la cancha
+      // Propiedades críticas para el comportamiento de colisión
+      circle.parentPala = this.visual;
+      circle.localYOffset = localY;
+      circle.isP1 = this.isP1;
+      
+      this.hitboxes.add(circle);
     }
   }
 
@@ -124,75 +120,116 @@ export class Pala {
   }
 
   updateVisuals() {
-  const visualAngle = this.isP1 ? -this.logicalRotation : this.logicalRotation;
-  this.visual.setAngle(visualAngle);
+    // Actualizamos el ángulo visual
+    this.visual.setAngle(this.isP1 ? -this.logicalRotation : this.logicalRotation);
 
-  const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
-  const scaleY = this.visual.scaleY;
+    // Calculamos constantes fuera del bucle
+    const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
+    const scaleY = this.visual.scaleY;
+    const sinAngle = Math.sin(angleRad);
+    const cosAngle = Math.cos(angleRad);
+    const visualX = this.visual.x;
+    const visualY = this.visual.y;
 
-  this.hitboxes.children.iterate(circle => {
-    if (!circle.body) return;
-    const localY = circle.localYOffset;
-    const newX = this.visual.x - localY * Math.sin(angleRad);
-    const newY = this.visual.y + localY * Math.cos(angleRad);
-    circle.body.reset(newX, newY);
-  });
-}
+    // Actualizamos las hitboxes
+    this.hitboxes.children.iterate(circle => {
+      if (!circle.body) return;
+      
+      // Calculamos la nueva posición
+      const localY = circle.localYOffset * scaleY;
+      const newX = visualX - localY * sinAngle;
+      const newY = visualY + localY * cosAngle;
+      
+      // Actualizamos posición preservando velocidad
+      const { velocity, width, height } = circle.body;
+      circle.setPosition(newX, newY);
+      
+      // Actualizamos el cuerpo físico
+      circle.body.position.set(newX - width/2, newY - height/2);
+      circle.body.prev.copy(circle.body.position);
+      circle.body.velocity.copy(velocity);
+    });
+  }
 
-updateHitboxes() {
-  const angleRad = this.visual.angle * Phaser.Math.DEG_TO_RAD;
-  const scaleY = this.visual.scaleY;
 
-  this.hitboxes.children.iterate(circle => {
-    if (!circle.body) return;
-    const localY = circle.localYOffset * scaleY;
-    const newX = this.visual.x - localY * Math.sin(angleRad);
-    const newY = this.visual.y + localY * Math.cos(angleRad);
-    circle.body.reset(newX, newY);
-  });
-}
 
-expandHitboxesGradualmente(extraCount = 4, duration = 2000) {
-  const radio = this.visual.width / 2;
-  const alturaPala = this.visual.height;
-  const numCirculos = this.CIRCLES_DENSITY;
-  const espaciado = numCirculos > 1 ? (alturaPala - radio * 2) / (numCirculos - 1) : 0;
-  const delayPerCircle = duration / extraCount;
+  expandHitboxesGradualmente(duration = 2000) {
+    const radio = this.visual.width / 2;
+    const alturaPalaOriginal = this.visual.height;
+    const alturaPalaEscalada = alturaPalaOriginal * this.visual.scaleY;
+    
+    // Calculamos el espacio mínimo entre hitboxes (ligeramente menor que el diámetro)
+    const espaciadoMinimo = radio * 1.8; // Usamos 1.8 en lugar de 2 para tener un poco de solapamiento
+    
+    // Calculamos la cantidad total de hitboxes necesarias para la altura escalada
+    const numCirculosNecesarios = Math.ceil(alturaPalaEscalada / espaciadoMinimo);
+    
+    // Recalculamos el espaciado real para distribuir uniformemente
+    const espaciadoReal = alturaPalaEscalada / (numCirculosNecesarios - 1);
+    
+    // Obtenemos las hitboxes actuales
+    const hitboxesActuales = this.hitboxes.getChildren();
+    const numHitboxesNuevas = numCirculosNecesarios - hitboxesActuales.length;
+    
+    // Si no necesitamos más hitboxes, solo actualizamos las posiciones
+    if (numHitboxesNuevas <= 0) {
+      return;
+    }
+    
+    // Calculamos las posiciones iniciales y finales
+    const startYEscalado = -alturaPalaEscalada/2 + radio;
+    const endYEscalado = alturaPalaEscalada/2 - radio;
+    
+    const delayPerCircle = duration / numHitboxesNuevas;
 
-  const hitboxesArray = this.hitboxes.getChildren();
-  const topBase = hitboxesArray[0]?.localYOffset ?? -alturaPala / 2 + radio;
-  const bottomBase = hitboxesArray[hitboxesArray.length - 1]?.localYOffset ?? alturaPala / 2 - radio;
+    // Primero, actualizamos las posiciones de las hitboxes existentes
+    hitboxesActuales.forEach((circle, index) => {
+      const ratio = index / (hitboxesActuales.length - 1);
+      circle.localYOffset = Phaser.Math.Linear(startYEscalado, endYEscalado, ratio);
+    });
 
-  for (let i = 1; i <= extraCount; i++) {
-    this.scene.time.delayedCall(i * delayPerCircle, () => {
-      const offsetY = (espaciado * i) + (espaciado / 2);
-      const localYTop = topBase - offsetY;
-      const localYBottom = bottomBase + offsetY;
+    // Luego creamos las nuevas hitboxes
+    for (let i = 1; i <= numHitboxesNuevas; i++) {
+      this.scene.time.delayedCall(i * delayPerCircle, () => {
+        // Interpolamos entre hitboxes existentes para posicionar las nuevas
+        const ratio = i / (numHitboxesNuevas + 1);
+        const localY = Phaser.Math.Linear(startYEscalado, endYEscalado, ratio);
 
-      [localYTop, localYBottom].forEach(localY => {
-        const circle = this.scene.add.circle(this.visual.x, this.visual.y, radio, 0xffffff, 0).setVisible(false);
+        const circle = this.scene.add.circle(this.visual.x, this.visual.y, radio, 0xffffff, 0)
+          .setVisible(false);
+          
         this.scene.physics.add.existing(circle);
-        circle.body.setCircle(radio).setImmovable(true).setMass(0.0001);
+        circle.body.setCircle(radio);
+        circle.body.setImmovable(true);
+        circle.body.setCollideWorldBounds(false);
+        circle.body.allowGravity = false;
+        circle.body.moves = true;
+        circle.body.pushable = false;
+        circle.body.customSeparateX = true;
+        circle.body.customSeparateY = true;
+        circle.body.setMass(0.0001);
+
+        circle.parentPala = this.visual;
         circle.localYOffset = localY;
         circle.isP1 = this.isP1;
-        circle.parentPala = this.visual;
+        
         this.hitboxes.add(circle);
+      });
+    }
+  }
+
+  retractHitboxesGradualmente(originalCount, duration = 2000) {
+    const allCircles = this.hitboxes.getChildren();
+    const extraCircles = allCircles.slice(originalCount);
+    const delayPerCircle = duration / extraCircles.length;
+
+    // Invertimos el orden para que se eliminen de afuera hacia adentro
+    extraCircles.reverse().forEach((circle, index) => {
+      this.scene.time.delayedCall(index * delayPerCircle, () => {
+        circle.destroy();
       });
     });
   }
-}
-
-retractHitboxesGradualmente(originalCount, duration = 2000) {
-  const allCircles = this.hitboxes.getChildren();
-  const extraCircles = allCircles.slice(originalCount);
-  const delayPerCircle = duration / extraCircles.length;
-
-  extraCircles.forEach((circle, index) => {
-    this.scene.time.delayedCall(index * delayPerCircle, () => {
-      circle.destroy();
-    });
-  });
-}
 
   // --- Métodos de acceso para la escena ---
   getHitboxGroup() {

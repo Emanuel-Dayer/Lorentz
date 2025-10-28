@@ -17,9 +17,9 @@ import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
 import { ControlsStatusUI } from "../utils/ControlsStatusUI";
 
 // La clase Game contiene toda la lógica de la escena principal
-export class Game extends Scene {
+export class CoopGame extends Scene {
   constructor() {
-    super("Game");
+    super("CoopGame");
 
     // Constantes de rotación (se pasarán a las instancias de las Palas)
     this.MAX_ROTATION_DEG = 55;
@@ -65,9 +65,7 @@ export class Game extends Scene {
     this.VelocidadPala = 1200;
     this.VelocidadParticula = 1000; 
     this.jugadorParaServir = jugadorParaServir || 1; // Recibe al ganador o usa 1 por defecto
-    this.puntuacionP1 = 0;
-    this.puntuacionP2 = 0;
-    this.PUNTOS_PARA_GANAR = 5;
+    this.puntuacionTotal = 0; // Puntuación compartida para modo cooperativo
     this.juegoFinalizado = false;
     
     // ARRAYS PARA SEGUIR LAS PARTÍCULAS PEGADAS
@@ -79,9 +77,9 @@ export class Game extends Scene {
   }
 
   create() {
+    // Configurar los sonidos
     this.sounds.ParticulaRebota = this.sound.add("ParticulaRebota");
     this.sounds.ColisionObstaculo = this.sound.add("ColisionObstaculo");
-
     this.sounds.Ball = this.sound.add("Ball");
     this.sounds.BLockBreak = this.sound.add("BLockBreak");
     this.sounds.DestroyingParticle = this.sound.add("DestroyingParticle");
@@ -89,10 +87,10 @@ export class Game extends Scene {
     this.sounds.TouchingStabalizer = this.sound.add("TouchingStabalizer");
     this.sounds.TouchingStabalizer2 = this.sound.add("TouchingStabalizer2");
 
-    this.sounds.ParticulaRebota.play();
-
     const gameWidth = this.sys.game.config.width;
     const gameHeight = this.sys.game.config.height;
+
+    this.sounds.ParticulaRebota.play();
 
     this.inputSystem = new InputSystem(this, this.keyMap1, this.keyMap2);
     this.uiManager = new UIManager(this);
@@ -144,18 +142,16 @@ export class Game extends Scene {
       this.lineaControl.toggleForPlayer('player2');
     }
 
-
     /*
     // Comprobar si se ha pulsado el botón de intercambio de jugadores
     if (this.inputSystem.isSwapButtonPressed()) {
       this.inputSystem.swapPlayers();
     }
+
     // Comprobar teclas de debug/reinicio en cada frame
     if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
     */
-
-    
 
     // Actualizar las palas siempre (PERMITE QUE SE SIGAN MOVIENDO AUNQUE EL JUEGO HAYA TERMINADO)
     this.pala1.update(delta);
@@ -344,8 +340,8 @@ export class Game extends Scene {
     // Pegar la partícula al ganador
     this.ResetParticulaParaServir(this.jugadorParaServir);
     
-    // Mostrar puntuaciones y tutorial
-    this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
+    // Mostrar puntuación inicial
+    this.uiManager.updateScores(this.puntuacionTotal);
   }
 
   crearNuevaParticula(x, y, state = PARTICLE_STATE.NORMAL) {
@@ -428,11 +424,26 @@ export class Game extends Scene {
       return; // ignorar este hit
     }
 
-    // Registrar hit
+    // Registrar hit y añadir puntos por golpear la partícula
     particula.recordHitTime(playerKey, now);
     particula.setLastPlayerHit(playerKey, color);
-    // Solo incrementamos si es < 5.
+    
+    // Incrementar contador y puntos
     particula.incrementHitCount();
+    this.puntuacionTotal += 100; // 100 puntos por cada golpe
+    this.uiManager.updateScores(this.puntuacionTotal); // Actualizar la puntuación mostrada
+
+    // Si llega a 9 cargas, la partícula se destruye
+    if (particula.getHitCount() >= 9) {
+      if (this.lineaControl) this.lineaControl.removeLinea(particula);
+      particula.destroy();
+      this.uiManager.updateScores(this.puntuacionTotal);
+      
+      if (this.particulas.countActive(true) === 0) {
+        this.MostrarMensajeVictoria();
+      }
+      return;
+    }
     
     const maxDif = palaVisual.height / 2;
     const factorPosicionY = Phaser.Math.Clamp(circulo.localYOffset / maxDif, -1, 1);
@@ -454,6 +465,10 @@ export class Game extends Scene {
   const rowIndex = bloque.rowIndex;
   const { x, y } = bloque;
   bloque.destroy();
+
+  // Añadir 50 puntos por romper el bloque
+  this.puntuacionTotal += 50;
+  this.uiManager.updateScores(this.puntuacionTotal);
 
   // Chance de 10% de soltar un Power Up
   if (Phaser.Math.Between(1, 100) <= 20) {
@@ -496,36 +511,18 @@ export class Game extends Scene {
   const gameHeight = this.sys.game.config.height;
   const bound = 50;
 
-  let scored = false;
   let outOfBounds = false;
 
-  // Fondo izquierdo → Jugador 1 defiende
-  if (particula.x < -bound) {
-    if (particula.escudoActivo && particula.lastPlayerHit === 'player2') {
+  // Fondo izquierdo o derecho
+  if (particula.x < -bound || particula.x > gameWidth + bound) {
+    if (particula.escudoActivo) {
       particula.escudoActivo = false;
       if (particula.halo) particula.halo.destroy();
-      particula.body.setVelocityX(this.VelocidadParticula);
+      particula.body.setVelocityX(particula.x < -bound ? this.VelocidadParticula : -this.VelocidadParticula);
       this.sounds.ParticulaRebota?.play();
       return;
     }
-
-    this.puntuacionP2++;
-    this.jugadorParaServir = 1;
-    scored = true;
-
-  // Fondo derecho → Jugador 2 defiende
-  } else if (particula.x > gameWidth + bound) {
-    if (particula.escudoActivo && particula.lastPlayerHit === 'player1') {
-      particula.escudoActivo = false;
-      if (particula.halo) particula.halo.destroy();
-      particula.body.setVelocityX(-this.VelocidadParticula);
-      this.sounds.ParticulaRebota?.play();
-      return;
-    }
-
-    this.puntuacionP1++;
-    this.jugadorParaServir = 2;
-    scored = true;
+    outOfBounds = true;
   }
 
   // Fuera de límites verticales
@@ -533,26 +530,14 @@ export class Game extends Scene {
     outOfBounds = true;
   }
 
-  if (scored || outOfBounds) {
+  if (outOfBounds) {
     if (this.lineaControl) this.lineaControl.removeLinea(particula);
     particula.destroy();
+    this.uiManager.updateScores(this.puntuacionTotal);
 
-    if (scored) {
-      this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
-
-      if (this.puntuacionP1 >= this.PUNTOS_PARA_GANAR) {
-        this.MostrarMensajeVictoria(1);
-      } else if (this.puntuacionP2 >= this.PUNTOS_PARA_GANAR) {
-        this.MostrarMensajeVictoria(2);
-      } else {
-        if (this.particulas.countActive(true) === 0) {
-          this.ResetParticulaParaServir(this.jugadorParaServir);
-        }
-      }
-    } else if (outOfBounds) {
-      if (this.particulas.countActive(true) === 0) {
-        this.ResetParticulaParaServir(this.jugadorParaServir);
-      }
+    // Verificar si se quedaron sin partículas
+    if (this.particulas.countActive(true) === 0) {
+      this.MostrarMensajeVictoria();
     }
   }
 }
@@ -564,14 +549,12 @@ export class Game extends Scene {
 handleBarrierHit(particula) {
   if (!particula.active || this.juegoFinalizado) return;
 
-  const lastHitPlayerKey = particula.lastPlayerHit;
+  const hitCount = particula.getHitCount();
 
-  // Si no ha sido golpeada por nadie, se destruye sin consecuencias
-  if (!lastHitPlayerKey) {
-  // 🛡️ Verificar si tiene escudo aunque no haya sido golpeada por una pala
+  // Si tiene escudo activo, rebota y se consume
   if (particula.escudoActivo) {
     particula.escudoActivo = false;
-    if (particula.halo) {  // ya no se que hacer 
+    if (particula.halo) {
       particula.halo.destroy();
       particula.halo = null;
     }
@@ -582,66 +565,25 @@ handleBarrierHit(particula) {
     return;
   }
 
-  // Si no tiene escudo, se destruye como antes
-  particula.destroy();
-  if (this.particulas.countActive(true) === 0) {
-    this.ResetParticulaParaServir(this.jugadorParaServir);
-  }
-  return;
-}
-
-  // 🛡️ PRIORIDAD: Si tiene escudo activo, rebota y se consume
-  if (particula.escudoActivo) {
-  particula.escudoActivo = false;
-  if (particula.halo) {
-    particula.halo.destroy();
-    particula.halo = null;
+  // Añadir puntos según la cantidad de cargas solo si tiene 5 o más
+  if (hitCount === 5) {
+    this.puntuacionTotal += 1000; // 1000 puntos por 5 cargas
+  } else if (hitCount >= 6 && hitCount <= 8) {
+    this.puntuacionTotal += 500; // 500 puntos por 6, 7 u 8 cargas
   }
 
-  particula.body.setVelocityY(-Math.max(600, this.VelocidadParticula * 0.5));
+  // Actualizar UI y reproducir sonido
+  this.uiManager.updateScores(this.puntuacionTotal);
+  this.sounds.TouchingStabalizer2.play();
+
+  // Destruir la partícula
   if (this.lineaControl) this.lineaControl.removeLinea(particula);
-  this.sounds.ParticulaRebota?.play();
+  particula.destroy();
 
-  // ✅ No se destruye ni se modifican puntos
-  return;
-}
-
-  const lastHitPlayer = (lastHitPlayerKey === 'player1') ? 1 : 2;
-  const opponentPlayer = (lastHitPlayer === 1) ? 2 : 1;
-  const isCharged = particula.getHitCount() >= 5;
-
-  if (isCharged) {
-    // Rebote cargado
-    particula.body.setVelocityY(-Math.max(600, this.VelocidadParticula * 0.5));
-    if (this.lineaControl) this.lineaControl.removeLinea(particula);
-
-    if (lastHitPlayer === 1 && this.puntuacionP1 > 0) this.puntuacionP1--;
-    if (lastHitPlayer === 2 && this.puntuacionP2 > 0) this.puntuacionP2--;
-
-    particula.decrementHitCount();
-    this.sounds.TouchingStabalizer2.play();
-
-  } else {
-    // Destrucción normal
-    if (this.lineaControl) this.lineaControl.removeLinea(particula);
-    particula.destroy();
-
-    if (opponentPlayer === 1) this.puntuacionP1++;
-    else this.puntuacionP2++;
-
-    if (lastHitPlayer === 1 && this.puntuacionP1 > 0) this.puntuacionP1--;
-    if (lastHitPlayer === 2 && this.puntuacionP2 > 0) this.puntuacionP2--;
-
-    this.sounds.DestroyingParticle.play();
-    this.jugadorParaServir = opponentPlayer;
-
-    if (this.particulas.countActive(true) === 0) {
-      this.ResetParticulaParaServir(this.jugadorParaServir);
-    }
+  // Verificar si nos quedamos sin partículas
+  if (this.particulas.countActive(true) === 0) {
+    this.MostrarMensajeVictoria();
   }
-
-  this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
-  this.ComprobarVictoria(this.puntuacionP1, this.puntuacionP2);
 }
 
 handlePowerUpCollision(particula, powerUp) {
@@ -659,6 +601,10 @@ handlePowerUpCollision(particula, powerUp) {
       }
     }
 
+    // Añadir 20 puntos por recoger power up
+    this.puntuacionTotal += 20;
+    this.uiManager.updateScores(this.puntuacionTotal);
+
     powerUp.onCollected(jugador);
   } else {
     console.warn('PowerUp no pudo determinar el jugador que lo recogió.');
@@ -675,7 +621,7 @@ handlePowerUpCollision(particula, powerUp) {
   }
 
   ResetParticulaParaServir(jugador) {
-    // Destruye TODAS las partículas activas antes de crear la nueva, asegurando un único servicio
+    // Destruye TODAS las partículas activas antes de crear las nuevas
     // Si existe lineaControl, limpiar todas las lineas primero
     if (this.lineaControl) this.lineaControl.clearAll();
     this.particulas.getChildren().forEach(p => p.destroy());
@@ -690,12 +636,21 @@ handlePowerUpCollision(particula, powerUp) {
         this.reclaimText = null;
     }
 
-    const palaActiva = (jugador === 1) ? this.pala1 : this.pala2;
-    // La nueva partícula se crea y se pega, y el array de pegadas se actualizará en el update
-    const particula = this.crearNuevaParticula(0, 0); 
-    if (particula) {
-      particula.pegar(palaActiva);
-      particula.palaPegada = jugador;
+    // Crear 3 partículas para cada jugador
+    for (let i = 0; i < 3; i++) {
+      // Partículas para jugador 1
+      const particula1 = this.crearNuevaParticula(0, 0);
+      if (particula1) {
+        particula1.pegar(this.pala1);
+        particula1.palaPegada = 1;
+      }
+
+      // Partículas para jugador 2
+      const particula2 = this.crearNuevaParticula(0, 0);
+      if (particula2) {
+        particula2.pegar(this.pala2);
+        particula2.palaPegada = 2;
+      }
     }
   }
 
@@ -723,7 +678,7 @@ handlePowerUpCollision(particula, powerUp) {
     this.controlsUI.setVisible(this.physics.world.drawDebug);
   }
 
-MostrarMensajeVictoria(jugadorGanador) {
+  MostrarMensajeVictoria() {
   this.juegoFinalizado = true;
 
   // Limpieza visual
@@ -734,10 +689,10 @@ MostrarMensajeVictoria(jugadorGanador) {
     this.reclaimText = null;
   }
 
-  // Ir a escena de resultado
+  // Transición a escena de resultado
   this.scene.start('RslGameResult', {
-    modo: 'VS',
-    ganador: jugadorGanador
+    modo: 'COOP',
+    puntuacion: this.puntuacionTotal
   });
 }
 }

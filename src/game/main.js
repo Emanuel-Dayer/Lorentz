@@ -1,9 +1,14 @@
-import { Boot } from "./scenes/Boot";
-import { Game as MainGame } from "./scenes/Game";
 import { AUTO, Scale, Game } from "phaser";
+import { Boot } from "./scenes/Boot";
 import { Preload } from "./scenes/Preload";
+// Menú principal
 import InitialMenu from "./scenes/MainMenu";
+// Modos de jueego
+import { CoopGame } from "./scenes/CoopGame";
 import { PreGame } from "./scenes/PreGame";
+import { Game as MainGame } from "./scenes/Game";
+//Escena victoria o derrota
+import { RslGameResult } from "./scenes/RslGame";
 
 const config = {
   type: AUTO,
@@ -30,7 +35,7 @@ const config = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [Boot, Preload, InitialMenu, PreGame, MainGame],
+  scene: [Boot, Preload, InitialMenu, PreGame, MainGame, CoopGame, RslGameResult],
 };
 
 const StartGame = (parent) => {

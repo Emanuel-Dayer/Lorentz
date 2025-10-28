@@ -15,12 +15,12 @@ export default class LineaControl {
   static CONFIG = {
     // Visual de la línea
     LINE_THICKNESS: 4,           // Grosor de la línea en píxeles
-    MAX_CURVE: 900,             // Curvatura máxima en píxeles
+    MAX_CURVE: 600,             // Curvatura máxima en píxeles
     CURVE_CONTROL_POINT: 0,     // Posición del punto de control (0.5 = medio, menor = más cerca de la partícula)
     CURVE_SEGMENTS: 20,         // Segmentos para dibujar la curva (más = más suave)
     
     // Física y comportamiento
-    LERP_SPEED: 600,            // Velocidad de respuesta a la rotación (más alto = sigue más rápido)
+    LERP_SPEED: 2000,            // Velocidad de respuesta a la rotación (más alto = sigue más rápido)
     STRAIGHTEN_SPEED: 1,      // Velocidad de enderezamiento (decremento por segundo)
     MAX_TENSION: 1,          // Tensión máxima de la línea
     TENSION_DECAY: 1,        // Velocidad de pérdida de tensión (más alto = más rápido)

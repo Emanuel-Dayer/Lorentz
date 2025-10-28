@@ -7,8 +7,18 @@ export const PARTICLE_STATE = {
   RECLAMABLE: "reclamable",
 };
 
-// Nueva constante para el tope de toques individuales
-const MAX_HITS = 5;
+// Configuración de estados de carga de la partícula
+const CHARGE_STATES = [
+  { color: 0x000000, scale: 1.0, speedMultiplier: 1.0, curveInfluence: 400 },  // 0: Negro (sin carga)
+  { color: 0xABA244, scale: 1.1, speedMultiplier: 1.1, curveInfluence: 800 },  // 1: Dorado suave
+  { color: 0x71B359, scale: 1.2, speedMultiplier: 1.2, curveInfluence: 1200 }, // 2: Verde
+  { color: 0x77B8B0, scale: 1.3, speedMultiplier: 1.3, curveInfluence: 1600 }, // 3: Turquesa
+  { color: 0xA9B2CF, scale: 1.4, speedMultiplier: 1.4, curveInfluence: 1800 }, // 4: Azul grisáceo
+  { color: 0xFFFFFF, scale: 1.5, speedMultiplier: 1.5, curveInfluence: 2000 }, // 5: Blanco
+  { color: 0xE8BEBE, scale: 1.6, speedMultiplier: 1.6, curveInfluence: 2200 }, // 6: Rosa claro
+  { color: 0xD95F5F, scale: 1.7, speedMultiplier: 1.7, curveInfluence: 2400 }, // 7: Rojo medio
+  { color: 0xFF0000, scale: 1.8, speedMultiplier: 1.8, curveInfluence: 2600 }, // 8: Rojo intenso
+];
 
 export class Particula extends Phaser.GameObjects.Arc {
   /**
@@ -20,9 +30,15 @@ export class Particula extends Phaser.GameObjects.Arc {
    */
   constructor(scene, x, y, radius, config) {
     // Llama al constructor de la clase base (Phaser.GameObjects.Arc)
-    super(scene, x, y, radius, 0, 360, false, 0x000000, 1);
+    super(scene, x, y, radius, 0, 360, false, CHARGE_STATES[0].color, 1);
     this.setStrokeStyle(5, 0xffffff);
-
+    
+    // Establecer el límite de hits según el modo de juego
+    this.MAX_HITS = scene.constructor.name === 'CoopGame' ? 9 : 5;
+    
+    // Guardamos el radio base para los cálculos de escala
+    this.baseRadius = radius;
+    
     // Añade este objeto a la escena y al sistema de físicas
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -33,6 +49,9 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.lastPlayerHit = null; // 'player1' o 'player2'
     this.hitCount = 0;
     this.radius = radius; // Guardamos el radio para cálculo de espaciado
+    this.escudoActivo = false;
+    this.escudoColor = null; // 0x0000FF para azul, 0xFF0000 para rojo
+    this.escudoOwner = null; // 'player1' o 'player2'
 
     // Cooldown para evitar múltiples hits por las múltiples hitboxes de una pala
     // Guarda timestamps (ms) del último hit por cada jugador
@@ -143,7 +162,9 @@ export class Particula extends Phaser.GameObjects.Arc {
     if (!this.lineActive || this.lineTension <= 0) return;
 
     // Aplicar modificación a la velocidad vertical según curvatura y tensión
-    const maxCurvatureSpeed = 600; // píxeles/seg * máxima influencia cuando tension=1
+    // Obtener la influencia de curvatura según el nivel de carga
+    const chargeState = CHARGE_STATES[this.hitCount];
+    const maxCurvatureSpeed = chargeState ? chargeState.curveInfluence : CHARGE_STATES[0].curveInfluence;
     const vyAdd = this.lineCurvature * maxCurvatureSpeed * this.lineTension * dt;
 
     const newVy = Phaser.Math.Clamp(this.body.velocity.y + vyAdd, -this._maxLineVy, this._maxLineVy);
@@ -223,10 +244,39 @@ export class Particula extends Phaser.GameObjects.Arc {
     this.hitCountText.setPosition(this.x, this.y);
     this.hitCountText.setDepth(9999); 
     // Aseguramos que el texto refleje el conteo
-    this.hitCountText.setText(this.hitCount); 
+    this.hitCountText.setText(this.hitCount);
+    
+    // Actualizar estado visual según la carga
+    const chargeState = CHARGE_STATES[this.hitCount];
+    if (chargeState) {
+      // Actualizar color de relleno
+      this.fillColor = chargeState.color;
+      
+      // Actualizar tamaño visual y físico
+      const newRadius = this.baseRadius * chargeState.scale;
+      this.setRadius(newRadius);
+      this.body.setCircle(newRadius); // Actualizar el hitbox físico
+      
+      // Actualizar velocidad si está en movimiento
+      if (this.body.velocity.x !== 0 || this.body.velocity.y !== 0) {
+        const currentVel = new Phaser.Math.Vector2(this.body.velocity.x, this.body.velocity.y);
+        const speed = currentVel.length();
+        const baseSpeed = this.config.VelocidadParticula;
+        const targetSpeed = baseSpeed * chargeState.speedMultiplier;
+        currentVel.normalize().scale(targetSpeed);
+        this.body.setVelocity(currentVel.x, currentVel.y);
+      }
+    }
   }
 
   setLastPlayerHit(playerKey, color) {
+    // Si hay un escudo activo, solo permitimos que el dueño del escudo controle la partícula
+    if (this.escudoActivo) {
+      // Mantener el último jugador que tocó como el dueño del escudo
+      this.lastPlayerHit = this.escudoOwner;
+      return; // No cambiar el color cuando hay escudo activo
+    }
+
     this.lastPlayerHit = playerKey;
     this.setStrokeStyle(5, color);
     // Usamos el color hexadecimal para el texto también
@@ -255,11 +305,11 @@ export class Particula extends Phaser.GameObjects.Arc {
   }
 
   incrementHitCount() {
-    // FIX: Solo incrementamos si el contador es menor que el tope (5)
-    if (this.hitCount < MAX_HITS) {
+    // Incrementamos el contador hasta el límite máximo del modo actual
+    if (this.hitCount < this.MAX_HITS) {
         this.hitCount++;
+        this.hitCountText.setText(this.hitCount);
     }
-    this.hitCountText.setText(this.hitCount);
     // Retornamos el nuevo conteo para que la clase Game pueda tomar decisiones
     return this.hitCount;
   }

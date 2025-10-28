@@ -29,6 +29,17 @@ export default class MainMenu extends Phaser.Scene {
         this.wasChangedLanguage = TODO;
         this.isTransitioning = false;
         this.isChangingLanguage = false;
+        
+        // Configuración de navegación
+        this.navigationArrows = {
+            up: null,
+            down: null,
+            left: null,
+            right: null
+        };
+
+        // Sistema de partículas
+        this.transitionParticles = null;
 
         // Configuración visual
         this.palaBaseWidth = 50;
@@ -79,12 +90,16 @@ export default class MainMenu extends Phaser.Scene {
         // Crear contenedor principal
         this.mainContainer = this.add.container(0, 0);
 
+        // Crear sistema de partículas para transiciones
+        this.createTransitionParticles();
+
         // Crear elementos UI base
         this.createPalas();
         this.createParticle();
         this.createMenuTexts();
         this.createLanguageBlocks();
         this.createSettingsMenu();
+        this.createNavigationIndicators();
         this.setupInputSystem();
         this.setupMusic();
 
@@ -263,6 +278,88 @@ export default class MainMenu extends Phaser.Scene {
         });
     }
 
+    createTransitionParticles() {
+        this.transitionParticles = this.add.particles(0, 0, 'particle', {
+            speed: { min: 100, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.4, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 800,
+            gravityY: 0,
+            quantity: 1,
+            frequency: 50,
+            tint: 0x44d27e,
+            on: false
+        }).setDepth(30);
+    }
+
+    emitTransitionParticles(x, y, direction) {
+        if (!this.transitionParticles) return;
+
+        // Configurar dirección de las partículas según la transición
+        let angleRange = { min: 0, max: 360 };
+        switch(direction) {
+            case 'up':
+                angleRange = { min: -135, max: -45 };
+                break;
+            case 'down':
+                angleRange = { min: 45, max: 135 };
+                break;
+            case 'left':
+                angleRange = { min: -225, max: -135 };
+                break;
+            case 'right':
+                angleRange = { min: -45, max: 45 };
+                break;
+        }
+
+        this.transitionParticles.setPosition(x, y);
+        this.transitionParticles.setAngle(angleRange);
+        this.transitionParticles.start();
+
+        // Detener emisión después de un tiempo
+        this.time.delayedCall(500, () => {
+            this.transitionParticles.stop();
+        });
+    }
+
+    createNavigationIndicators() {
+        const { width, height } = this.scale;
+        const arrowConfig = {
+            fontSize: '32px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        };
+
+        // Crear un contenedor específico para las flechas que no se verá afectado por el zoom
+        this.arrowsContainer = this.add.container(0, 0);
+        this.arrowsContainer.setDepth(100); // Asegurarnos que esté por encima de todo
+
+        // Crear flechas de navegación
+        this.navigationArrows = {
+            up: this.add.text(width/2, height/2 - 150, '▲', arrowConfig).setOrigin(0.5).setAlpha(0.4),
+            down: this.add.text(width/2, height/2 + 150, '▼', arrowConfig).setOrigin(0.5).setAlpha(0.4),
+            left: this.add.text(width/2 - 150, height/2, '◄', arrowConfig).setOrigin(0.5).setAlpha(0.4),
+            right: this.add.text(width/2 + 150, height/2, '►', arrowConfig).setOrigin(0.5).setAlpha(0.4)
+        };
+
+        // Añadir tweens pulsantes para las flechas
+        Object.values(this.navigationArrows).forEach(arrow => {
+            this.tweens.add({
+                targets: arrow,
+                scale: { from: 0.9, to: 1.1 },
+                alpha: { from: 0.4, to: 0.8 },
+                duration: 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            arrow.setDepth(100);
+            this.arrowsContainer.add(arrow);
+        });
+    }
+
     createSettingsMenu() {
         const { width, height } = this.scale;
         
@@ -390,29 +487,32 @@ export default class MainMenu extends Phaser.Scene {
         this.cameras.main.setAlpha(brightness);
     }
 
-transitionToState(newState) {
-        if (this.isTransitioning || (this.isChangingLanguage && newState !== MENU_STATES.CENTRAL)) {
+    transitionToState(newState, isCancelled = false) {
+        if (!isCancelled && (this.isTransitioning || (this.isChangingLanguage && newState !== MENU_STATES.CENTRAL))) {
             return;
         }
 
         const { width, height } = this.scale;
-        const duration = 1000;
-        const ease = 'Power2';
+        const duration = isCancelled ? 500 : 1000;
+        const ease = isCancelled ? 'Power1' : 'Power2';
 
         this.isTransitioning = true;
         this.currentState = newState;
 
+        // Si estamos cancelando una transición, detener todos los tweens activos
+        if (isCancelled) {
+            this.tweens.killAll();
+        }
+
         // Ocultar todos los elementos
-        this.hideAllElements();
+        this.hideAllElements(isCancelled);
 
         // Resetear posición de palas (separar las operaciones)
         this.palaP1.setPosition(0, height/2);
         this.palaP1.width = this.palaBaseWidth;
         
         this.palaP2.setPosition(width, height/2);
-        this.palaP2.width = this.palaBaseWidth;
-
-        switch(newState) {
+        this.palaP2.width = this.palaBaseWidth;        switch(newState) {
             case MENU_STATES.CENTRAL:
                 this.transitionToCentral(duration, ease);
                 break;
@@ -439,21 +539,59 @@ transitionToState(newState) {
     transitionToCentral(duration, ease) {
         const { width, height } = this.scale;
 
+        // Resetear el slider activo
+        this.activeSlider = 0;
+
         // Animar cámara al centro
         this.camera.pan(width/2, height/2, duration, ease);
         this.camera.zoomTo(1, duration, ease);
 
-        // Restaurar palas
+        // Restaurar palas con una transición suave
         this.tweens.add({
             targets: [this.palaP1, this.palaP2],
             width: this.palaBaseWidth,
             y: height/2,
+            x: {
+                targets: this.palaP1,
+                value: 0
+            },
             duration,
             ease
         });
 
-        // Mostrar partícula en el centro
-        this.showParticleInCenter();
+        this.tweens.add({
+            targets: this.palaP2,
+            x: width,
+            duration,
+            ease
+        });
+
+        // Animar partícula al centro con efecto de rebote
+        this.particula.setVisible(true);
+        this.tweens.add({
+            targets: this.particula,
+            x: width/2,
+            y: height/2,
+            scale: { from: 0.8, to: 1 },
+            alpha: { from: 0.5, to: 1 },
+            duration: duration * 0.8,
+            ease: 'Bounce.easeOut'
+        });
+
+        // Mostrar y animar los indicadores de navegación
+        Object.values(this.navigationArrows).forEach(arrow => {
+            arrow.setVisible(true);
+            arrow.setAlpha(0.4);
+            this.tweens.add({
+                targets: arrow,
+                scale: { from: 0.9, to: 1.1 },
+                alpha: { from: 0.4, to: 0.8 },
+                duration: 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        });
     }
 
      transitionToVersus(duration, ease) {
@@ -565,6 +703,10 @@ transitionToState(newState) {
         // Mostrar texto de ajustes
         this.texts.settings.setVisible(true);
 
+        // Asegurarse de que el primer slider esté seleccionado
+        this.activeSlider = 0;
+        this.highlightActiveSlider();
+
         // Animar cámara
         this.camera.pan(width/2, height * 0.7, duration, ease);
         this.camera.zoomTo(1.2, duration, ease);
@@ -585,45 +727,136 @@ transitionToState(newState) {
 
         let endX = startX;
         let endY = startY;
+        let recoilX = startX;
+        let recoilY = startY;
 
         if (direction === 'vertical') {
-            // Para movimiento vertical, endXorY es ignorado y usamos goUp
             endY = goUp ? this.scale.height * 0.2 : this.scale.height * 0.8;
+            recoilY = goUp ? this.scale.height * 0.6 : this.scale.height * 0.4;
         } else {
-            // Para movimiento horizontal (paletas), endXorY es la posición X final
             endX = endXorY;
+            recoilX = startX + (startX - endXorY) * 0.2; // Recoil del 20% en dirección opuesta
         }
 
-        // Crear línea de trayectoria
-        this.particleTrail.clear();
-        this.particleTrail.lineStyle(2, 0xffffff, 0.5);
-        this.particleTrail.beginPath();
-        this.particleTrail.moveTo(startX, startY);
-        this.particleTrail.lineTo(endX, endY);
-        this.particleTrail.strokePath();
+        // Crear línea de trayectoria con efecto
+        const drawTrail = (fromX, fromY, toX, toY, alpha) => {
+            this.particleTrail.clear();
+            
+            // Determinar el color según el estado al que vamos
+            let trailColor = 0xffffff;
+            if (direction === 'horizontal') {
+                if (endX < startX) { // Va hacia la izquierda (COOP)
+                    trailColor = 0x0066ff; // Color azul de palaP1
+                } else { // Va hacia la derecha (VERSUS)
+                    trailColor = 0xff0000; // Color rojo de palaP2
+                }
+            }
+            
+            this.particleTrail.lineStyle(2, trailColor, alpha);
+            this.particleTrail.beginPath();
+            this.particleTrail.moveTo(fromX, fromY);
+            this.particleTrail.lineTo(toX, toY);
+            this.particleTrail.strokePath();
+        };
 
-        // Animar partícula
+        // Secuencia de animación: recoil -> movimiento final
         this.tweens.add({
             targets: this.particula,
-            x: endX,
-            y: endY,
-            duration: duration * 1.5,
-            ease: 'Power1',
+            x: recoilX,
+            y: recoilY,
+            duration: duration * 0.2,
+            ease: 'Cubic.easeOut',
+            onUpdate: (tween) => {
+                const currentX = this.particula.x;
+                const currentY = this.particula.y;
+                drawTrail(startX, startY, currentX, currentY, 0.3);
+            },
             onComplete: () => {
-                this.particleTrail.clear();
+                // Movimiento principal
+                this.tweens.add({
+                    targets: this.particula,
+                    x: endX,
+                    y: endY,
+                    duration: duration * 0.8,
+                    ease: 'Cubic.easeIn',
+                    onUpdate: (tween) => {
+                        const currentX = this.particula.x;
+                        const currentY = this.particula.y;
+                        drawTrail(currentX, currentY, endX, endY, 0.5);
+                    },
+                    onComplete: () => {
+                        this.particleTrail.clear();
+                    }
+                });
             }
         });
     }
 
-    hideAllElements() {
+    hideAllElements(isCancelled = false) {
         Object.values(this.texts).forEach(text => text.setVisible(false));
         this.helloText?.setVisible(false);
         this.howAreUText?.setVisible(false);
         this.languageBlocks.forEach(block => block.container.setVisible(false));
-        this.particula.setVisible(false);
-        this.particleTrail.clear();
         this.stabilizationField?.setVisible(false);
         this.sliders.forEach(slider => slider.setVisible(false));
+
+        // Primero ocultamos todas las flechas
+        Object.values(this.navigationArrows).forEach(arrow => {
+            arrow.setVisible(false);
+            this.tweens.killTweensOf(arrow);
+        });
+
+        // Mostrar las flechas según el estado
+        if (this.currentState === MENU_STATES.CENTRAL) {
+            // En el menú central, mostrar todas las flechas
+            Object.values(this.navigationArrows).forEach(arrow => {
+                arrow.setVisible(true);
+                arrow.setAlpha(0.4);
+                this.tweens.add({
+                    targets: arrow,
+                    scale: { from: 0.9, to: 1.1 },
+                    alpha: { from: 0.4, to: 0.8 },
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            });
+        } else {
+            // En otros menús, mostrar solo la flecha de retorno
+            const returnArrow = this.getReturnArrow();
+            if (returnArrow) {
+                returnArrow.setVisible(true);
+                returnArrow.setAlpha(0.4);
+                this.tweens.add({
+                    targets: returnArrow,
+                    scale: { from: 0.9, to: 1.1 },
+                    alpha: { from: 0.4, to: 0.8 },
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        }
+
+        // Limpiar el rastro de la partícula
+        this.particleTrail.clear();
+    }
+
+    getReturnArrow() {
+        switch(this.currentState) {
+            case MENU_STATES.VERSUS:
+                return this.navigationArrows.left;
+            case MENU_STATES.COOP:
+                return this.navigationArrows.right;
+            case MENU_STATES.LANGUAGES:
+                return this.navigationArrows.down;
+            case MENU_STATES.SETTINGS:
+                return this.navigationArrows.up;
+            default:
+                return null;
+        }
     }
 
     async selectLanguage() {
@@ -714,6 +947,9 @@ transitionToState(newState) {
             this.handleMenuInput();
         }
 
+        // Actualizar la posición de las flechas según la cámara
+        this.updateArrowsPosition();
+
         this.inputSystem.lateUpdate();
     }
 
@@ -723,70 +959,115 @@ transitionToState(newState) {
             return;
         }
 
+        const { width, height } = this.scale;
+        
+        // Inputs jugador 1
         const isP1North = this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, 'player1');
-        const isP1East = this.inputSystem.isJustPressed(INPUT_ACTIONS.EAST, 'player1');
-        const isP1South = this.inputSystem.isJustPressed(INPUT_ACTIONS.SOUTH, 'player1');
+        const isP1Left = this.inputSystem.isJustPressed(INPUT_ACTIONS.LEFT, 'player1');
+        const isP1Right = this.inputSystem.isJustPressed(INPUT_ACTIONS.RIGHT, 'player1');
+        const isP1Up = this.inputSystem.isJustPressed(INPUT_ACTIONS.UP, 'player1');
+        const isP1Down = this.inputSystem.isJustPressed(INPUT_ACTIONS.DOWN, 'player1');
+
+        // Inputs jugador 2
+        const isP2North = this.inputSystem.isJustPressed(INPUT_ACTIONS.NORTH, 'player2');
+        const isP2Left = this.inputSystem.isJustPressed(INPUT_ACTIONS.LEFT, 'player2');
+        const isP2Right = this.inputSystem.isJustPressed(INPUT_ACTIONS.RIGHT, 'player2');
+        const isP2Up = this.inputSystem.isJustPressed(INPUT_ACTIONS.UP, 'player2');
+        const isP2Down = this.inputSystem.isJustPressed(INPUT_ACTIONS.DOWN, 'player2');
+
+        // Combinar inputs de ambos jugadores
+        const isLeft = isP1Left || isP2Left;
+        const isRight = isP1Right || isP2Right;
+        const isUp = isP1Up || isP2Up;
+        const isDown = isP1Down || isP2Down;
+        const isNorth = isP1North || isP2North;
+        
+        // Posición actual de la partícula para efectos
+        const particleX = this.particula.x;
+        const particleY = this.particula.y;
 
         // Manejo de estados
         switch(this.currentState) {
             case MENU_STATES.CENTRAL:
-                if (this.inputSystem.isJustPressed(INPUT_ACTIONS.LEFT, 'player1')) {
+                if (isLeft) {
+                    this.emitTransitionParticles(particleX, particleY, 'left');
                     this.transitionToState(MENU_STATES.COOP);
-                } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.RIGHT, 'player1')) {
+                } else if (isRight) {
+                    this.emitTransitionParticles(particleX, particleY, 'right');
                     this.transitionToState(MENU_STATES.VERSUS);
-                } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.UP, 'player1')) {
+                } else if (isUp) {
+                    this.emitTransitionParticles(particleX, particleY, 'up');
                     this.transitionToState(MENU_STATES.LANGUAGES);
-                } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.DOWN, 'player1')) {
+                } else if (isDown) {
+                    this.emitTransitionParticles(particleX, particleY, 'down');
                     this.transitionToState(MENU_STATES.SETTINGS);
                 }
                 break;
 
+            case MENU_STATES.VERSUS:
+                if (isLeft) {
+                    this.emitTransitionParticles(particleX, particleY, 'left');
+                    this.transitionToState(MENU_STATES.CENTRAL);
+                } else if (isNorth) {
+                    if (this.menuMusic?.isPlaying) {
+                        this.menuMusic.stop();
+                    }
+                    this.scene.start("PreGame", { language: this.language });
+                }
+                break;
+
+            case MENU_STATES.COOP:
+                if (isRight) {
+                    this.emitTransitionParticles(particleX, particleY, 'right');
+                    this.transitionToState(MENU_STATES.CENTRAL);
+                } else if (isNorth) {
+                    if (this.menuMusic?.isPlaying) {
+                        this.menuMusic.stop();
+                    }
+                    this.scene.start("CoopGame", { language: this.language });
+                }
+                break;
+
             case MENU_STATES.LANGUAGES:
-                if (this.inputSystem.isJustPressed(INPUT_ACTIONS.LEFT, 'player1')) {
+                if (isDown) {
+                    this.emitTransitionParticles(particleX, particleY, 'down');
+                    this.transitionToState(MENU_STATES.CENTRAL);
+                } else if (isLeft) {
                     this.navigateLanguageBlocks(-1);
-                } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.RIGHT, 'player1')) {
+                } else if (isRight) {
                     this.navigateLanguageBlocks(1);
-                } else if (isP1North && !this.isChangingLanguage) {
+                } else if (isNorth && !this.isChangingLanguage) {
                     this.selectLanguage();
                 }
                 break;
 
             case MENU_STATES.SETTINGS:
-                if (this.inputSystem.isJustPressed(INPUT_ACTIONS.UP, 'player1')) {
-                    this.activeSlider = Math.max(0, this.activeSlider - 1);
-                    this.highlightActiveSlider();
-                } else if (this.inputSystem.isJustPressed(INPUT_ACTIONS.DOWN, 'player1')) {
+                if (isP1Up) {
+                    if (this.activeSlider === 0) {
+                        // Solo volver al menú central si estamos en el primer slider
+                        this.emitTransitionParticles(particleX, particleY, 'up');
+                        this.transitionToState(MENU_STATES.CENTRAL);
+                    } else {
+                        // Navegar entre sliders
+                        this.activeSlider = Math.max(0, this.activeSlider - 1);
+                        this.highlightActiveSlider();
+                    }
+                } else if (isP1Down) {
                     this.activeSlider = Math.min(this.sliders.length - 1, this.activeSlider + 1);
                     this.highlightActiveSlider();
                 }
 
                 const slider = this.sliders[this.activeSlider];
                 if (slider) {
-                    if (this.inputSystem.isDown(INPUT_ACTIONS.LEFT, 'player1')) {
+                    if (this.inputSystem.isDown(INPUT_ACTIONS.LEFT, 'player1') || 
+                        this.inputSystem.isDown(INPUT_ACTIONS.LEFT, 'player2')) {
                         slider.setValue(slider.getValue() - 0.01);
-                    } else if (this.inputSystem.isDown(INPUT_ACTIONS.RIGHT, 'player1')) {
+                    } else if (this.inputSystem.isDown(INPUT_ACTIONS.RIGHT, 'player1') || 
+                             this.inputSystem.isDown(INPUT_ACTIONS.RIGHT, 'player2')) {
                         slider.setValue(slider.getValue() + 0.01);
                     }
                 }
                 break;
-
-            case MENU_STATES.VERSUS:
-            case MENU_STATES.COOP:
-                if (isP1North) {
-                    if (this.menuMusic?.isPlaying) {
-                        this.menuMusic.stop();
-                    }
-                    this.scene.start("PreGame", { language: this.language });
-                    return;
-                }
-                break;
-        }
-
-        // Botón de volver al centro (excepto si estamos en el centro o cambiando idioma)
-        if (this.currentState !== MENU_STATES.CENTRAL && 
-            !this.isChangingLanguage && 
-            (isP1East || isP1South)) {
-            this.transitionToState(MENU_STATES.CENTRAL);
         }
     }
 
@@ -796,5 +1077,54 @@ transitionToState(newState) {
             slider.handle.setFillStyle(color);
             slider.track.setStrokeStyle(index === this.activeSlider ? 2 : 0, 0xffffff);
         });
+    }
+
+    updateArrowsPosition() {
+        if (!this.navigationArrows) return;
+
+        const { width, height } = this.scale;
+        const camera = this.cameras.main;
+        const zoom = camera.zoom;
+        const centerX = camera.scrollX + width / 2;
+        const centerY = camera.scrollY + height / 2;
+
+        // Calcular el espaciado basado en el zoom
+        const centralSpacing = 150 / zoom;
+        const borderSpacing = 50 / zoom; // Espacio más cercano al borde para estados no centrales
+
+        if (this.currentState === MENU_STATES.CENTRAL) {
+            // En el estado central, todas las flechas alrededor del centro
+            Object.values(this.navigationArrows).forEach(arrow => {
+                if (arrow?.visible) {
+                    arrow.setScale(1 / zoom);
+                }
+            });
+
+            this.navigationArrows.up?.setPosition(centerX, centerY - centralSpacing);
+            this.navigationArrows.down?.setPosition(centerX, centerY + centralSpacing);
+            this.navigationArrows.left?.setPosition(centerX - centralSpacing, centerY);
+            this.navigationArrows.right?.setPosition(centerX + centralSpacing, centerY);
+        } else {
+            // En otros estados, colocar la flecha cerca del borde correspondiente
+            const returnArrow = this.getReturnArrow();
+            if (returnArrow?.visible) {
+                returnArrow.setScale(1.2 / zoom); // Hacer la flecha de retorno un poco más grande
+
+                switch (this.currentState) {
+                    case MENU_STATES.VERSUS:
+                        returnArrow.setPosition(camera.scrollX + borderSpacing * 12, centerY);
+                        break;
+                    case MENU_STATES.COOP:
+                        returnArrow.setPosition(camera.scrollX + width - borderSpacing * 12, centerY);
+                        break;
+                    case MENU_STATES.LANGUAGES:
+                        returnArrow.setPosition(centerX, camera.scrollY + height - borderSpacing * 4.5);
+                        break;
+                    case MENU_STATES.SETTINGS:
+                        returnArrow.setPosition(centerX, camera.scrollY + borderSpacing * 4.5);
+                        break;
+                }
+            }
+        }
     }
 }
