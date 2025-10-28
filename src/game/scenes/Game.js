@@ -154,7 +154,7 @@ export class Game extends Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
     */
-   
+
     // Actualizar las palas siempre (PERMITE QUE SE SIGAN MOVIENDO AUNQUE EL JUEGO HAYA TERMINADO)
     this.pala1.update(delta);
     this.pala2.update(delta);
@@ -454,7 +454,7 @@ export class Game extends Scene {
   bloque.destroy();
 
   // Chance de 10% de soltar un Power Up
-  if (Phaser.Math.Between(1, 100) <= 100) {
+  if (Phaser.Math.Between(1, 100) <= 20) {
     const tipo = Phaser.Math.RND.pick(['paleta', 'escudo', 'hielo', 'caracol']);
     let powerUp;
 

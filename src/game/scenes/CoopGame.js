@@ -469,7 +469,7 @@ export class CoopGame extends Scene {
   this.uiManager.updateScores(this.puntuacionTotal);
 
   // Chance de 10% de soltar un Power Up
-  if (Phaser.Math.Between(1, 100) <= 100) {
+  if (Phaser.Math.Between(1, 100) <= 20) {
     const tipo = Phaser.Math.RND.pick(['paleta', 'escudo', 'hielo', 'caracol']);
     let powerUp;
 
