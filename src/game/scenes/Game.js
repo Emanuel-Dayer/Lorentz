@@ -145,11 +145,12 @@ export class Game extends Scene {
     }
 
 
-    /*
     // Comprobar si se ha pulsado el botón de intercambio de jugadores
     if (this.inputSystem.isSwapButtonPressed()) {
       this.inputSystem.swapPlayers();
     }
+
+    /*
     // Comprobar teclas de debug/reinicio en cada frame
     if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this.toggleDebug();
