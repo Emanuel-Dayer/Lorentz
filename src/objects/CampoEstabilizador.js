@@ -51,9 +51,26 @@ export default class CampoEstabilizador {
     scene.physics.add.collider(this.particulas, this.rightBlock);
 
     // Colisión con la barrera inferior (dispara la lógica especial)
-    // CORRECCIÓN: Usamos un callback para emitir el evento a la clase Game,
-    // pasando la instancia de la partícula.
     scene.physics.add.collider(this.particulas, this.barrier, (particula, barrier) => {
+      // Evitar múltiples colisiones en el mismo frame
+      const now = scene.time.now;
+      if (particula._lastBarrierHit && now - particula._lastBarrierHit < 100) {
+        return;
+      }
+      particula._lastBarrierHit = now;
+
+      // Si tiene escudo, simplemente rebota y pierde el escudo
+      if (particula.escudoActivo) {
+        if (particula.halo) {
+          particula.halo.destroy();
+          particula.halo = null;
+        }
+        particula.escudoActivo = false;
+        particula.escudoColor = null;
+        particula.escudoOwner = null;
+        return;
+      }
+
       // Solo manejamos la colisión si la partícula está en estado NORMAL
       if (particula.state === 'normal') {
         this.scene.events.emit('particleHitBarrier', particula);

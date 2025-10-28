@@ -7,8 +7,10 @@ export default class PowerUpPaleta extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setScale(0.25); // ← escala visual
-    this.body.setSize(this.width * 0.25, this.height * 0.25, true); // ← hitbox físico
+    // Ajustar primero el hitbox al tamaño completo de la imagen
+    this.body.setSize(this.width / 2, this.height / 2);
+    // Luego aplicar la escala que afectará tanto al sprite como al hitbox
+    this.setScale(0.25);
     this.setDepth(10);
     this.setVelocityY(100); // Velocidad de caída
     this.body.allowGravity = false;
@@ -17,7 +19,7 @@ export default class PowerUpPaleta extends Phaser.Physics.Arcade.Sprite {
 
     this.collected = false;
 
-    this.activationDelayMs = 2000;
+    this.activationDelayMs = 2000; // o sea 2 segundos
     this.spawnTime = scene.time.now;
   }
 
