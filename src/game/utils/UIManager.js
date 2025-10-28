@@ -10,8 +10,8 @@ export class UIManager {
     const gameWidth = scene.sys.game.config.width;
     const gameHeight = scene.sys.game.config.height;
 
-    // Determinar el modo de juego basado en la clase de la escena
-    this.isCoopMode = scene.constructor.name === 'CoopGame';
+    // Determinar el modo de juego basado en la key de la escena
+    this.isCoopMode = scene.scene.key === 'CoopGame';
 
     if (this.isCoopMode) {
       // --- Textos de Puntuación para modo cooperativo ---
