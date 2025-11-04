@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="500" alt="Lorentz" src="" />
+  <img width="500" alt="Lorentz" src="https://github.com/user-attachments/assets/9d107758-9a85-4772-b471-67515aab37e5" />
   <br><br>
 </div>
 
@@ -14,7 +14,34 @@
 
 ## 🎥 Trailer
 
+https://github.com/user-attachments/assets/71c7b53b-5fe5-4fba-81d3-5d82d9e8d315
+
 ## ⌨️ Controles
+
+### ⌨️ PC/Teclado:
+
+● <ins><b>Movimiento Vertical:</b></ins> Teclas direccionales W, S para el jugador uno Y flechas arriba y abajo para el jugador dos.
+
+● <ins><b>Inclinación:</b></ins> Teclas direccionales A, D para jugador uno y flechas derecha y abajo para jugador dos.
+
+● <ins><b>Luchar por partículas:</b></ins> Shift para el jugador uno y Numpad 1 para el jugador dos.
+
+● <ins><b>Lanzar partículas:</b></ins> Espacio para el jugador uno y Numpad 0 para el jugador dos.
+
+●<ins><b>Activar control de particula:</b></ins> E para el jugador uno y Numpad 3 para el jugador dos.
+
+### 🕹️🎮 Maquina Arcade/Joysticks:
+
+● <ins><b>Movimiento Vertical:</b></ins>  moviendo la palanca de arriba a abajo ↓ ↑ 
+
+● <ins><b>Inclinación:</b></ins> moviendo la palanca de izquierda a derecha ← →.
+
+● <ins><b>Luchar por partículas:</b></ins> O para el jugador uno y O para el jugador dos.
+
+● <ins><b>Lanzar partículas:</b></ins> △ para el jugador uno y △ para el jugador dos.
+
+● <ins><b>Activar control de particula:</b></ins> X para el jugador uno y X para el jugador dos.
+
 
 ## 👾 Link al juego
 <a href="https://lorentz-blue.vercel.app/">
