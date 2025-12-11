@@ -64,6 +64,14 @@ onCollected(jugador) {
         }
       };
     })(particula.update);
+
+
+    // Asegurar limpieza del efecto si la partícula se destruye (al llegar a los toques maximos)
+    particula.once('destroy', function() {
+      if (halo && halo.active) {
+        halo.destroy();
+        }
+      });
   }
 
   this.destroy();

@@ -34,7 +34,9 @@ export default class Caracolpowerup extends Phaser.Physics.Arcade.Sprite {
     onCollected(jugador) {
         const now = this.scene.time.now;
         if (now - this.spawnTime < this.activationDelayMs) {
+            /*
             console.warn('Caracolpowerup: aún no está activo');
+            */
             return;
         }
 
