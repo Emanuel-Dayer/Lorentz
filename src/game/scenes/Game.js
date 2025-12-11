@@ -668,7 +668,9 @@ handlePowerUpCollision(particula, powerUp) {
 
     powerUp.onCollected(jugador);
   } else {
+    /*
     console.warn('PowerUp no pudo determinar el jugador que lo recogió.');
+    */
     powerUp.destroy(); // evita que quede flotando
   }
 }

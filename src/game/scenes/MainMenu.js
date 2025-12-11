@@ -36,9 +36,6 @@ export default class MainMenu extends Phaser.Scene {
             right: null
         };
 
-        // Sistema de partículas
-        this.transitionParticles = null;
-
         // Configuración visual
         this.palaBaseWidth = 50;
         this.palaExpandedWidth = 300;
@@ -94,9 +91,6 @@ export default class MainMenu extends Phaser.Scene {
             .setDepth(15)
             .setAlpha(0)
             .setScale(0.6); // Ajusta este valor según el tamaño que necesites
-
-        // Crear sistema de partículas para transiciones
-        this.createTransitionParticles();
 
         // Crear elementos UI base
         this.createPalas();
@@ -272,51 +266,6 @@ export default class MainMenu extends Phaser.Scene {
             }
 
             this.mainContainer.add(container);
-        });
-    }
-
-    createTransitionParticles() {
-        this.transitionParticles = this.add.particles(0, 0, 'particle', {
-            speed: { min: 100, max: 200 },
-            angle: { min: 0, max: 360 },
-            scale: { start: 0.4, end: 0 },
-            blendMode: 'ADD',
-            lifespan: 800,
-            gravityY: 0,
-            quantity: 1,
-            frequency: 50,
-            tint: 0x44d27e,
-            on: false
-        }).setDepth(30);
-    }
-
-    emitTransitionParticles(x, y, direction) {
-        if (!this.transitionParticles) return;
-
-        // Configurar dirección de las partículas según la transición
-        let angleRange = { min: 0, max: 360 };
-        switch(direction) {
-            case 'up':
-                angleRange = { min: -135, max: -45 };
-                break;
-            case 'down':
-                angleRange = { min: 45, max: 135 };
-                break;
-            case 'left':
-                angleRange = { min: -225, max: -135 };
-                break;
-            case 'right':
-                angleRange = { min: -45, max: 45 };
-                break;
-        }
-
-        this.transitionParticles.setPosition(x, y);
-        this.transitionParticles.setAngle(angleRange);
-        this.transitionParticles.start();
-
-        // Detener emisión después de un tiempo
-        this.time.delayedCall(500, () => {
-            this.transitionParticles.stop();
         });
     }
 
@@ -901,7 +850,9 @@ export default class MainMenu extends Phaser.Scene {
 
             this.wasChangedLanguage = FETCHED;
         } catch (error) {
+            /*
             console.error('Error al cambiar el idioma:', error);
+            */
         } finally {
             this.isChangingLanguage = false;
         }
@@ -1000,23 +951,18 @@ export default class MainMenu extends Phaser.Scene {
         switch(this.currentState) {
             case MENU_STATES.CENTRAL:
                 if (isLeft) {
-                    this.emitTransitionParticles(particleX, particleY, 'left');
                     this.transitionToState(MENU_STATES.COOP);
                 } else if (isRight) {
-                    this.emitTransitionParticles(particleX, particleY, 'right');
                     this.transitionToState(MENU_STATES.VERSUS);
                 } else if (isUp) {
-                    this.emitTransitionParticles(particleX, particleY, 'up');
                     this.transitionToState(MENU_STATES.LANGUAGES);
                 } else if (isDown) {
-                    this.emitTransitionParticles(particleX, particleY, 'down');
                     this.transitionToState(MENU_STATES.SETTINGS);
                 }
                 break;
 
             case MENU_STATES.VERSUS:
                 if (isLeft) {
-                    this.emitTransitionParticles(particleX, particleY, 'left');
                     this.transitionToState(MENU_STATES.CENTRAL);
                 } else if (isNorth) {
                     if (this.menuMusic?.isPlaying) {
@@ -1028,7 +974,6 @@ export default class MainMenu extends Phaser.Scene {
 
             case MENU_STATES.COOP:
                 if (isRight) {
-                    this.emitTransitionParticles(particleX, particleY, 'right');
                     this.transitionToState(MENU_STATES.CENTRAL);
                 } else if (isNorth) {
                     if (this.menuMusic?.isPlaying) {
@@ -1040,7 +985,6 @@ export default class MainMenu extends Phaser.Scene {
 
             case MENU_STATES.LANGUAGES:
                 if (isDown) {
-                    this.emitTransitionParticles(particleX, particleY, 'down');
                     this.transitionToState(MENU_STATES.CENTRAL);
                 } else if (isLeft) {
                     this.navigateLanguageBlocks(-1);
@@ -1055,7 +999,6 @@ export default class MainMenu extends Phaser.Scene {
                 if (isP1Up) {
                     if (this.activeSlider === 0) {
                         // Solo volver al menú central si estamos en el primer slider
-                        this.emitTransitionParticles(particleX, particleY, 'up');
                         this.transitionToState(MENU_STATES.CENTRAL);
                     } else {
                         // Navegar entre sliders

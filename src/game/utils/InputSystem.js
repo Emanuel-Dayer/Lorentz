@@ -82,8 +82,10 @@ export default class InputSystem {
    */
   _handleGamepadConnection(e, isConnected) {
     const gamepad = e.gamepad;
+    /*
     console.log(`Gamepad ${isConnected ? 'conectado' : 'desconectado'} en índice ${gamepad.index}: ${gamepad.id}`);
-
+    */
+   
     // No es necesario asignar aquí, ya que `update()` lo maneja en cada frame
     // Pero es útil para debug o si solo queremos saber qué index usa cada jugador.
     if (isConnected) {
