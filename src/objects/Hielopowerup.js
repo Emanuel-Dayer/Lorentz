@@ -34,7 +34,9 @@ export default class Hielopowerup extends Phaser.Physics.Arcade.Sprite {
     onCollected(jugador) {
         const now = this.scene.time.now;
         if (now - this.spawnTime < this.activationDelayMs) {
+            /*
             console.warn('Hielopowerup: aún no está activo');
+            */
             return;
         }
 
@@ -96,6 +98,13 @@ export default class Hielopowerup extends Phaser.Physics.Arcade.Sprite {
             Math.cos(angle) * targetVelocity,
             Math.sin(angle) * targetVelocity
         );
+
+        // Asegurar limpieza del efecto si la partícula se destruye (ej. al tocar el estabilizador)
+        particula.once('destroy', function() {
+            if (iceEffect && iceEffect.active) {
+                iceEffect.destroy();
+            }
+        });
 
         // Restaurar velocidad después del efecto
         scene.time.delayedCall(this.effectDuration, function() {

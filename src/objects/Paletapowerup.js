@@ -33,7 +33,9 @@ export default class PowerUpPaleta extends Phaser.Physics.Arcade.Sprite {
 onCollected(byPlayer) {
   const now = this.scene.time.now;
   if (now - this.spawnTime < this.activationDelayMs) {
+    /*
     console.warn('PowerUpPaleta: aún no está activo');
+    */
     return;
   }
 
