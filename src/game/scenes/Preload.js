@@ -85,7 +85,9 @@ export class Preload extends Scene {
 
     this.load.on('fileprogress', (file) => {
         this.assetText.setText(`Cargando: ${file.key} (${file.type})`);
+        /*
         console.log(`Cargando asset: ${file.key} (${file.type})`);
+        */
     });
     
     // Al completar la carga REAL de assets:
