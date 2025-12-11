@@ -1,6 +1,6 @@
 import { DE, EN, ES, PT } from "../enums/languages";
 
-const PROJECT_ID = "55c0d661-e336-4afb-82f9-fbe78381e1ab";
+const PROJECT_ID = "e7080f43-38c3-4d55-88f3-971d547efc52";
 let translations = null;
 let language = ES;
 

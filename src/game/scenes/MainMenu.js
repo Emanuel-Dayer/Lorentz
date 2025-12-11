@@ -19,10 +19,8 @@ export default class MainMenu extends Phaser.Scene {
         super("Menu");
         
         // Referencias a textos clave
-        const { next, hello, howAreU } = keys.sceneInitialMenu;
-        this.updatedString = next;
-        this.helloKey = hello;
-        this.howAreUKey = howAreU;
+        const {Idiomas} = keys.MenuInicial;
+        this.Idiomas = Idiomas;
         
         // Estado del menú
         this.currentState = MENU_STATES.CENTRAL;
@@ -159,13 +157,13 @@ export default class MainMenu extends Phaser.Scene {
             coop: this.add.text(width * 0.25 - 325, height/2, "CO-OP", textConfig)
                 .setOrigin(0.5)
                 .setDepth(15),
-            languages: this.add.text(width/2, height * 0.15 + 200, "IDIOMAS", textConfig)
-                .setOrigin(0.5)
-                .setDepth(15),
             settings: this.add.text(width/2, height * 0.85, "AJUSTES", textConfig)
                 .setOrigin(0.5)
                 .setDepth(15)
         };
+
+
+
 
         // Textos de bienvenida con el estilo original
         const welcomeTextConfig = {
@@ -174,25 +172,17 @@ export default class MainMenu extends Phaser.Scene {
             align: 'center'
         };
 
-        this.helloText = this.add.text(
-            width * 0.5,
-            height * 0.45 + 250,
-            getPhrase(this.helloKey),
-            welcomeTextConfig
-        ).setOrigin(0.5).setDepth(15);
-
-        this.howAreUText = this.add.text(
-            width * 0.5,
-            height * 0.55 + 250,
-            getPhrase(this.howAreUKey),
+        this.idiomastext = this.add.text(
+            width/2, 
+            height * 0.15 + 200,
+            getPhrase(this.Idiomas),
             welcomeTextConfig
         ).setOrigin(0.5).setDepth(15);
 
         Object.values(this.texts).forEach(text => text.setVisible(false));
-        this.helloText.setVisible(false);
-        this.howAreUText.setVisible(false);
+        this.idiomastext.setVisible(false);
 
-        this.mainContainer.add([...Object.values(this.texts), this.helloText, this.howAreUText]);
+        this.mainContainer.add([...Object.values(this.texts), this.idiomastext]);
     }
 
    
@@ -689,9 +679,7 @@ export default class MainMenu extends Phaser.Scene {
         });
 
         // Mostrar textos
-        this.texts.languages.setVisible(true);
-        this.helloText.setVisible(true);
-        this.howAreUText.setVisible(true);
+        this.idiomastext.setVisible(true);
 
         // Animar cámara
         this.camera.pan(width/2, height * 0.5, duration, ease);
@@ -810,8 +798,7 @@ export default class MainMenu extends Phaser.Scene {
 
     hideAllElements(isCancelled = false) {
         Object.values(this.texts).forEach(text => text.setVisible(false));
-        this.helloText?.setVisible(false);
-        this.howAreUText?.setVisible(false);
+        this.idiomastext?.setVisible(false);
         this.languageBlocks.forEach(block => block.container.setVisible(false));
         this.stabilizationField?.setVisible(false);
         this.sliders.forEach(slider => slider.setVisible(false));
@@ -897,20 +884,17 @@ export default class MainMenu extends Phaser.Scene {
         });
 
         // Iniciar parpadeo en textos
-        this.startFlicker(this.helloText);
-        this.startFlicker(this.howAreUText);
+        this.startFlicker(this.idiomastext);
 
         try {
             await getTranslations(this.selectedLanguageBlock.code);
             this.language = this.selectedLanguageBlock.code;
             
             // Actualizar textos
-            this.helloText.setText(getPhrase(this.helloKey));
-            this.howAreUText.setText(getPhrase(this.howAreUKey));
+            this.idiomastext.setText(getPhrase(this.Idiomas));
             
             // Restaurar estado visual
-            this.stopFlicker(this.helloText);
-            this.stopFlicker(this.howAreUText);
+            this.stopFlicker(this.idiomastext);
             this.languageBlocks.forEach(block => {
                 block.container.setAlpha(1);
             });

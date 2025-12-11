@@ -4,10 +4,16 @@ import { Particula } from "../../objects/Particula";
 import { UIManager } from "../utils/UIManager";
 import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
 import { ControlsStatusUI } from "../utils/ControlsStatusUI";
+import keys from "../../enums/keys";
+import { getTranslations, getPhrase } from "../../services/translations";
 
 export class PreGame extends Scene {
   constructor() {
     super("PreGame");
+
+    // Referencias a textos clave
+    const {Lucha} = keys.Interfaz;
+    this.Lucha = Lucha;
 
     this.PULL_TARGET = 5;
     this.PULL_STEP = 1;
@@ -63,7 +69,7 @@ export class PreGame extends Scene {
     this.particula.body.setImmovable(true).setVelocity(0, 0);
 
     // Textos de la UI para esta fase
-    this.add.text(gameWidth / 2, 120, '¡LUCHA POR LA PARTÍCULA!', {
+    this.add.text(gameWidth / 2, 120, getPhrase(this.Lucha), {
       fontSize: '48px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 6
     }).setOrigin(0.5);
 

@@ -1,6 +1,18 @@
+import keys from "../../enums/keys";
+import { getTranslations, getPhrase } from "../../services/translations";
+
 export class RslGameResult extends Phaser.Scene {
   constructor() {
     super("RslGameResult");
+
+    const {gameOver, BotonMenu, TotalPunto} = keys.RslGameText; // lo que esta en llavas son las frases, y despues poner key. y la key
+    this.gameOver = gameOver; // agragar referencia para los textos
+    this.BotonMenu = BotonMenu;
+    this.TotalPunto = TotalPunto;
+
+    const {Nombre, Condicion} = keys.Versus; // lo que esta en llavas son las frases, y despues poner key. y la key
+    this.Nombre = Nombre; // agragar referencia para los textos
+    this.Condicion = Condicion;
   }
 
   init(data) {
@@ -14,7 +26,7 @@ export class RslGameResult extends Phaser.Scene {
     this.canReturn = false;
 
     if (this.modo === 'VS') {
-      this.add.text(width / 2, height / 2 - 100, `¡Jugador ${this.ganador} ganó!`, {
+      this.add.text(width / 2, height / 2 - 100, `${getPhrase(this.Nombre)} ${this.ganador} ${getPhrase(this.Condicion)}`, {
         fontSize: '48px',
         fill: '#ffffff',
         fontStyle: 'bold',
@@ -23,7 +35,7 @@ export class RslGameResult extends Phaser.Scene {
         align: 'center'
       }).setOrigin(0.5);
     } else {
-      this.add.text(width / 2, height / 2 - 100, '¡Fin del juego!', {
+      this.add.text(width / 2, height / 2 - 100, `${getPhrase(this.gameOver)}`, {
         fontSize: '48px',
         fill: '#ffffff',
         fontStyle: 'bold',
@@ -32,7 +44,7 @@ export class RslGameResult extends Phaser.Scene {
         align: 'center'
       }).setOrigin(0.5);
 
-      this.add.text(width / 2, height / 2 - 20, `Puntuación total: ${this.puntuacion}`, {
+      this.add.text(width / 2, height / 2 - 20, `${getPhrase(this.TotalPunto)}: ${this.puntuacion}`, {
         fontSize: '48px',
         fill: '#ffffff',
         fontStyle: 'bold',
@@ -44,7 +56,7 @@ export class RslGameResult extends Phaser.Scene {
 
     // Agregar el texto de retorno después de un delay
     this.time.delayedCall(2000, () => {
-      this.returnText = this.add.text(width / 2, height / 2 + 60, 'Presiona cualquier botón para volver al menú', {
+      this.returnText = this.add.text(width / 2, height / 2 + 60, getPhrase(this.BotonMenu), {
         fontSize: '36px',
         fill: '#ffffff',
         fontStyle: 'bold',
