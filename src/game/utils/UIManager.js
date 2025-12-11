@@ -1,11 +1,19 @@
 import { Scene } from "phaser";
 import { Pala } from "../../objects/Pala";
 
+import keys from "../../enums/keys";
+import { getTranslations, getPhrase } from "../../services/translations";
+
 export class UIManager {
   /**
    * @param {Scene} scene La escena de Phaser.
    */
   constructor(scene) {
+
+    const {COOPTextoParticulas, COOPTextoPuntos} = keys.Cooperativo; // lo que esta en llavas son las frases, y despues poner key. y la key
+    this.COOPTextoParticulas = COOPTextoParticulas; // agragar referencia para los textos
+    this.COOPTextoPuntos = COOPTextoPuntos;
+
     this.scene = scene;
     const gameWidth = scene.sys.game.config.width;
     const gameHeight = scene.sys.game.config.height;
@@ -15,8 +23,8 @@ export class UIManager {
 
     if (this.isCoopMode) {
       // --- Textos de Puntuación para modo cooperativo ---
-      this.scoreText = scene.add.text(gameWidth * 0.25, 50, 'Puntos: 0', { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-      this.particlesRemainingText = scene.add.text(gameWidth * 0.75, 50, 'Partículas: 0', { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      this.scoreText = scene.add.text(gameWidth * 0.25, 50, `${getPhrase(this.COOPTextoPuntos)}: 0`, { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      this.particlesRemainingText = scene.add.text(gameWidth * 0.75, 50, `${getPhrase(this.COOPTextoParticulas)}: 0`, { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
     } else {
       // --- Textos de Puntuación para modo versus ---
       this.scoreTextP1 = scene.add.text(gameWidth * 0.25, 50, 'P1: 0', { fontSize: '70px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
@@ -53,10 +61,10 @@ export class UIManager {
   updateScores(score1, score2) {
     if (this.isCoopMode) {
       // Modo cooperativo: un solo contador de puntos y contador de partículas
-      this.scoreText.setText(`Puntos: ${score1}`);
+      this.scoreText.setText(`${getPhrase(this.COOPTextoPuntos)}: ${score1}`);
       // Actualizar el contador de partículas con las partículas activas
       const particlesCount = this.scene.particulas ? this.scene.particulas.countActive(true) : 0;
-      this.particlesRemainingText.setText(`Partículas: ${particlesCount}`);
+      this.particlesRemainingText.setText(`${getPhrase(this.COOPTextoParticulas)}: ${particlesCount}`);
     } else {
       // Modo versus: dos contadores de puntos
       this.scoreTextP1.setText(`P1: ${score1}`);

@@ -16,10 +16,16 @@ import { UIManager } from "../utils/UIManager";
 import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
 import { ControlsStatusUI } from "../utils/ControlsStatusUI";
 
+import keys from "../../enums/keys";
+import { getTranslations, getPhrase } from "../../services/translations";
+
 // La clase Game contiene toda la lógica de la escena principal
 export class CoopGame extends Scene {
   constructor() {
     super("CoopGame");
+
+    const {Pulsa} = keys.Interfaz; // lo que esta en llavas son las frases, y despues poner key. y la key
+    this.Pulsa = Pulsa; // agragar referencia para los textos
 
     // Constantes de rotación (se pasarán a las instancias de las Palas)
     this.MAX_ROTATION_DEG = 55;
@@ -395,7 +401,7 @@ export class CoopGame extends Scene {
         const maxP2 = this.MAX_PARTICLES_PEGADAS - p2Count;
         
         this.reclaimText = this.add.text(gameWidth / 2, gameHeight / 2 - 100, 
-            `¡PULSA ACCIÓN PARA RECLAMAR PARTÍCULA(S)! 
+            `${getPhrase(this.Pulsa)}
             (P1 máx: ${maxP1 > 0 ? maxP1 : 0}, P2 máx: ${maxP2 > 0 ? maxP2 : 0})`, {
           fontSize: '32px', fill: '#ffff00', fontStyle: 'bold', stroke: '#000', strokeThickness: 4, align: 'center'
         }).setOrigin(0.5);
