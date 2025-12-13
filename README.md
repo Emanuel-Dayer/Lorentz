@@ -4,7 +4,7 @@
 </div>
 
 <p align="center"> 
-  <img src="https://img.shields.io/badge/Versión-0.1-green" /> 
+  <img src="https://img.shields.io/badge/Versión-1.0-green" /> 
   <img src="https://img.shields.io/badge/Framework-Phaser_3-blue" /> 
   <img src="https://img.shields.io/badge/Fecha_de_publicación-Septiembe_2025-orange" /> 
 </p>
