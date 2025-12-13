@@ -1,42 +1,15 @@
-import Phaser from "phaser";
+import BasePowerUp from "./BasePowerUp";
 
-export default class Caracolpowerup extends Phaser.Physics.Arcade.Sprite {
+export default class Caracolpowerup extends BasePowerUp {
     constructor(scene, x, y) {
-        super(scene, x, y, 'Caracol');
+        super(scene, x, y, 'Caracol', 'caracol', 5000);
 
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-
-        // Ajustar primero el hitbox al tamaño completo de la imagen
-        this.body.setSize(this.width / 2, this.height / 2);
-        // Luego aplicar la escala que afectará tanto al sprite como al hitbox
-        this.setScale(0.25);
-        this.setDepth(10);
-        this.setVelocityY(100);
-        this.body.allowGravity = false;
-        this.body.setCollideWorldBounds(false);
-        this.setImmovable(true);
-
-        this.collected = false;
-        this.tipo = 'caracol';
-        this.activationDelayMs = 2000; // o sea 2 segundos
-        this.spawnTime = scene.time.now;
+        this.activationDelayMs = 2000;
         this.slowFactor = 0.5;
-        this.effectDuration = 5000;
-    }
-
-    update() {
-        if (this.y > this.scene.sys.game.config.height + 50) {
-            this.destroy();
-        }
     }
 
     onCollected(jugador) {
-        const now = this.scene.time.now;
-        if (now - this.spawnTime < this.activationDelayMs) {
-            /*
-            console.warn('Caracolpowerup: aún no está activo');
-            */
+        if (!this.isActive()) {
             return;
         }
 
@@ -54,30 +27,35 @@ export default class Caracolpowerup extends Phaser.Physics.Arcade.Sprite {
         // Aplicar ralentización
         pala.VELOCIDAD_PALA = pala.originalVelocidad * this.slowFactor;
 
-        // Efecto visual del caracol
-        const caracolEffect = this.scene.add.sprite(pala.x, pala.y, 'Caracol')
+        // Efecto visual del caracol encima de la pala
+        const palaVisual = pala.getVisualObject();
+        const caracolEffect = this.scene.add.sprite(palaVisual.x, palaVisual.y - palaVisual.height / 2 - 30, 'Caracol')
             .setScale(0.15)
             .setAlpha(0.5)
-            .setDepth(5);
+            .setDepth(palaVisual.depth + 1);
 
-        // Hacer que el efecto siga a la paleta
-        const updateCaracol = () => {
-            if (pala && pala.active && caracolEffect && caracolEffect.active) {
-                caracolEffect.setPosition(pala.x, pala.y);
+        // Sobrescribir el update de la pala para que el caracol la siga
+        const originalPalaUpdate = pala.update;
+        pala.update = function(inputSystem) {
+            // Llamar al update original
+            originalPalaUpdate.call(this, inputSystem);
+            
+            // Hacer que el caracol siga el movimiento vertical de la pala
+            if (caracolEffect && caracolEffect.active) {
+                const palaVisualCurrent = this.getVisualObject();
+                caracolEffect.setPosition(palaVisualCurrent.x, palaVisualCurrent.y - palaVisualCurrent.height / 2 - 30);
             }
         };
-
-        this.scene.events.on('update', updateCaracol);
 
         // Restaurar la velocidad después de la duración del efecto
         const scene = this.scene; // Guardamos la referencia a la escena
         scene.time.delayedCall(this.effectDuration, function() {
             if (pala) {
-                pala.VELOCIDAD_PALA = 1200; // Velocidad base de la pala
+                pala.VELOCIDAD_PALA = pala.originalVelocidad; // Restaurar velocidad original
+                pala.update = originalPalaUpdate; // Restaurar el update original
                 if (caracolEffect && caracolEffect.active) {
                     caracolEffect.destroy();
                 }
-                scene.events.off('update', updateCaracol);
             }
         });
 

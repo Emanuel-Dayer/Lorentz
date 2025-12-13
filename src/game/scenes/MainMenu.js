@@ -11,7 +11,7 @@ const MENU_STATES = {
     VERSUS: 'VERSUS',
     COOP: 'COOP',
     LANGUAGES: 'LANGUAGES',
-    SETTINGS: 'SETTINGS'
+    LEADERBOARD: 'LEADERBOARD'
 };
 
 export default class MainMenu extends Phaser.Scene {
@@ -71,8 +71,32 @@ export default class MainMenu extends Phaser.Scene {
         this.activeSlider = 0;
     }
 
-    init({ language }) {
+    init({ language, user }) {
         this.language = language || ES;
+        this.currentUser = user;
+        // Identificador único por cliente para marcar scores locales pertenecientes a este dispositivo
+        this.localClientId = localStorage.getItem('localClientId');
+        if (!this.localClientId) {
+            this.localClientId = `lc-${Date.now()}-${Math.floor(Math.random()*100000)}`;
+            localStorage.setItem('localClientId', this.localClientId);
+        }
+
+        // Migración: si existen scores locales antiguos sin ownerLocalId, asignarlos a este cliente
+        try {
+            const localStored = JSON.parse(localStorage.getItem('localHighScores') || '[]');
+            let changed = false;
+            if (Array.isArray(localStored)) {
+                localStored.forEach(entry => {
+                    if (entry && entry.isLocal && !entry.ownerLocalId) {
+                        entry.ownerLocalId = this.localClientId;
+                        changed = true;
+                    }
+                });
+                if (changed) localStorage.setItem('localHighScores', JSON.stringify(localStored));
+            }
+        } catch (e) {
+            // ignore malformed localStorage
+        }
     }
 
     create() {
@@ -97,7 +121,7 @@ export default class MainMenu extends Phaser.Scene {
         this.createParticle();
         this.createMenuTexts();
         this.createLanguageBlocks();
-        this.createSettingsMenu();
+        this.createLeaderboard();
         this.createNavigationIndicators();
         this.setupInputSystem();
         this.setupMusic();
@@ -148,16 +172,10 @@ export default class MainMenu extends Phaser.Scene {
             versus: this.add.text(width * 0.75 + 580, height/2, "VERSUS", textConfig)
                 .setOrigin(0.5)
                 .setDepth(15),
-            coop: this.add.text(width * 0.25 - 325, height/2, "CO-OP", textConfig)
-                .setOrigin(0.5)
-                .setDepth(15),
-            settings: this.add.text(width/2, height * 0.85, "AJUSTES", textConfig)
+            coop: this.add.text(width * 0.25 - 580, height/2, "CO-OP", textConfig)
                 .setOrigin(0.5)
                 .setDepth(15)
         };
-
-
-
 
         // Textos de bienvenida con el estilo original
         const welcomeTextConfig = {
@@ -173,10 +191,34 @@ export default class MainMenu extends Phaser.Scene {
             welcomeTextConfig
         ).setOrigin(0.5).setDepth(15);
 
+        // Textos del usuario y puntuación (mostrados en estado CENTRAL)
+        const userTextConfig = {
+            color: "#ffffff",
+            fontSize: '32px',
+            align: 'center',
+            fontStyle: 'bold'
+        };
+
+        this.userNameText = this.add.text(
+            width/2,
+            height * 0.2 + 800,
+            '',
+            userTextConfig
+        ).setOrigin(0.5).setDepth(15);
+
+        this.userScoreText = this.add.text(
+            width/2,
+            height * 0.27 + 750,
+            '',
+            { ...userTextConfig, fontSize: '28px' }
+        ).setOrigin(0.5).setDepth(15);
+
         Object.values(this.texts).forEach(text => text.setVisible(false));
         this.idiomastext.setVisible(false);
+        this.userNameText.setVisible(false);
+        this.userScoreText.setVisible(false);
 
-        this.mainContainer.add([...Object.values(this.texts), this.idiomastext]);
+        this.mainContainer.add([...Object.values(this.texts), this.idiomastext, this.userNameText, this.userScoreText]);
     }
 
    
@@ -306,89 +348,189 @@ export default class MainMenu extends Phaser.Scene {
         });
     }
 
-    createSettingsMenu() {
+    createLeaderboard() {
         const { width, height } = this.scale;
-        
-        // Campo estabilizador
-        this.stabilizationField = this.add.rectangle(
-            width/2,
-            height * 0.7,
-            width * 0.6,
-            height * 0.4,
-            0x1a1a1a
-        ).setStrokeStyle(2, 0x44d27e).setDepth(15).setVisible(false);
+        // Contenedor del leaderboard
+        this.leaderboardContainer = this.add.container(width / 2, height / 2 + 250).setDepth(15).setVisible(false);
 
-        // Sliders
-        const sliderConfig = {
-            width: width * 0.4,
-            height: 8,
-            x: width * 0.6,
-            trackColor: 0x666666,
-            handleColor: 0x44d27e,
-            handleRadius: 15
-        };
+        // Fondo del leaderboard
+        this.leaderboardBg = this.add.rectangle(
+            0,
+            0,
+            width * 0.48,
+            height * 0.66,
+            0x101216
+        ).setStrokeStyle(2, 0x00ffff, 0.6).setOrigin(0.5);
 
-        // Volumen (logarítmico)
-        this.volumeSlider = this.createSlider({
-            ...sliderConfig,
-            y: height * 0.65,
-            label: "Volumen (Logarítmico)",
-            initialValue: 0.5, // Comenzar en el medio (volumen normal)
-            onChange: this.updateVolume.bind(this)
-        });
+        this.leaderboardContainer.add(this.leaderboardBg);
 
-        // Brillo
-        this.brightnessSlider = this.createSlider({
-            ...sliderConfig,
-            y: height * 0.75,
-            label: "Brillo",
-            initialValue: 0.5, // Comenzar en el medio (brillo normal)
-            onChange: this.updateBrightness.bind(this)
-        });
+        // Almacenar referencias a las entradas con más estructura
+        this.scoreEntries = [];
 
-        this.sliders = [this.volumeSlider, this.brightnessSlider];
-        this.mainContainer.add(this.stabilizationField);
+        // Crear 10 espacios para los scores (con estilo)
+        const startY = -height * 0.26;
+        const spacing = height * 0.056;
+        const entryWidth = width * 0.42;
+        const entryHeight = Math.min(56, Math.floor(spacing * 0.9));
+
+        const topColors = [0xffd700, 0xc0c0c0, 0xcd7f32]; // Oro, Plata, Bronce
+
+        for (let i = 0; i < 10; i++) {
+            const y = startY + (i * spacing);
+
+            const entryContainer = this.add.container(0, y).setAlpha(0);
+
+            const bg = this.add.rectangle(0, 0, entryWidth, entryHeight, 0x1b1f2a)
+                .setOrigin(0.5)
+                .setStrokeStyle(2, 0x2b303b, 0.9)
+                .setAlpha(0.95);
+
+            // Glow overlay para efecto de pulso en cian (alpha animado)
+            const glow = this.add.rectangle(0, 0, entryWidth, entryHeight, 0x00ffff, 0.2)
+                .setOrigin(0.5)
+                .setAlpha(0)
+                .setDepth(1)
+                .setBlendMode(Phaser.BlendModes.ADD);
+
+            const badgeX = -entryWidth / 2 + 30;
+            const badge = this.add.circle(badgeX, 0, 18, 0x333844).setStrokeStyle(2, 0x000000);
+            const rankText = this.add.text(badgeX, 0, `${i + 1}`, {
+                fontSize: '16px',
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            const nameText = this.add.text(badgeX + 28, 0, '', {
+                fontSize: '18px',
+                color: '#e6eef8',
+                stroke: '#071228',
+                strokeThickness: 2
+            }).setOrigin(0, 0.5);
+
+            const scoreText = this.add.text(entryWidth / 2 - 28, 0, '', {
+                fontSize: '18px',
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }).setOrigin(1, 0.5);
+
+            entryContainer.add([bg, glow, badge, rankText, nameText, scoreText]);
+            this.leaderboardContainer.add(entryContainer);
+            this.scoreEntries.push({ entryContainer, bg, glow, badge, rankText, nameText, scoreText });
+        }
     }
 
-    createSlider({ x, y, width, height, label, initialValue, onChange, trackColor, handleColor, handleRadius }) {
-        const track = this.add.rectangle(x, y, width, height, trackColor).setDepth(16);
-        const handle = this.add.circle(
-            x + ((initialValue - 0.5) * width),
-            y,
-            handleRadius,
-            handleColor
-        ).setDepth(17);
-        
-        const labelText = this.add.text(x - (width/2) - 20, y, label, {
-            fontSize: '24px',
-            color: '#ffffff'
-        }).setOrigin(1, 0.5).setDepth(16);
+    async loadLeaderboard() {
+        try {
+            const topColors = [0xffd700, 0xc0c0c0, 0xcd7f32];
 
-        const slider = {
-            track,
-            handle,
-            label: labelText,
-            width,
-            baseX: x,
-            value: initialValue,
-            onChange,
-            getValue: () => slider.value,
-            setValue: (newValue) => {
-                // Asegurar que el valor está entre 0 y 1
-                slider.value = Phaser.Math.Clamp(newValue, 0, 1);
-                // Actualizar posición del handle
-                handle.x = x + ((slider.value - 0.5) * width);
-                if (onChange) onChange(slider.value);
-            },
-            setVisible: (visible) => {
-                track.setVisible(visible);
-                handle.setVisible(visible);
-                labelText.setVisible(visible);
+            // Obtener scores remotos solo si hay conexión
+            let remoteScores = [];
+            if (typeof navigator !== 'undefined' && navigator.onLine) {
+                try {
+                    remoteScores = await this.firebase.getHighScores();
+                } catch (e) {
+                    remoteScores = [];
+                }
             }
-        };
 
-        slider.setVisible(false);
-        return slider;
+            // Scores locales guardados en localStorage (no se suben automáticamente)
+            const localStored = JSON.parse(localStorage.getItem('localHighScores') || '[]');
+
+            // Combinar y ordenar
+            const combined = [...remoteScores, ...localStored]
+                .filter(s => s && typeof s.score === 'number')
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10);
+
+            // Determinar nombre/uid del usuario actual
+            let currentUserName = null;
+            let currentUid = null;
+            if (this.currentUser) {
+                currentUid = this.currentUser.uid || null;
+                const localUserData = JSON.parse(localStorage.getItem(`localUserData:${currentUid}`) || 'null');
+                currentUserName = localUserData?.displayName || this.currentUser.displayName || this.currentUser.email || null;
+            }
+
+            this.scoreEntries.forEach((entry, index) => {
+                const data = combined[index] || null;
+
+                    // Resetar cualquier tween/estado previo en esta fila para evitar pulso residual
+                    try {
+                        this.tweens.killTweensOf(entry.glow);
+                        this.tweens.killTweensOf(entry.entryContainer);
+                    } catch (e) {
+                        // ignore
+                    }
+                    entry.glow.setAlpha(0);
+                    entry.entryContainer.setScale(1);
+
+                    if (data) {
+                        entry.nameText.setText(data.name || '---');
+                        entry.scoreText.setText(String(data.score || 0));
+
+                        // Considerar usuario actual: cualquier entrada local almacenada debe mostrarse como nuestra;
+                        // si existe uid, también usarlo como coincidencia primaria
+                        const isLocalEntry = !!data.isLocal;
+                        const ownerMatches = isLocalEntry && data.ownerLocalId && this.localClientId && data.ownerLocalId === this.localClientId;
+                        const uidMatches = currentUid && data.uid && data.uid === currentUid;
+                        const isCurrentUser = uidMatches || ownerMatches;
+
+                        // Resaltar top 3
+                        if (index < 3) {
+                            entry.badge.setFillStyle(topColors[index]);
+                            entry.rankText.setColor('#071228');
+                            entry.bg.setFillStyle(0x2b2f39);
+                            entry.entryContainer.setScale(1.02);
+                        } else {
+                            entry.badge.setFillStyle(0x333844);
+                            entry.rankText.setColor('#ffffff');
+                            entry.bg.setFillStyle(0x1b1f2a);
+                            entry.entryContainer.setScale(1);
+                        }
+
+                        // Animación de aparición con pequeño retardo por fila
+                        this.tweens.add({
+                            targets: entry.entryContainer,
+                            alpha: { from: 0, to: 1 },
+                            y: entry.entryContainer.y,
+                            duration: 400,
+                            delay: index * 60,
+                            ease: 'Power2'
+                        });
+
+                        // Parpadeo suave (palpitante) solo para nuestro nombre: color cian y escala sutil
+                        if (isCurrentUser) {
+                            this.time.delayedCall(400 + index * 60, () => {
+                                // Pulso suave: aumentar alpha del glow y escala muy sutil
+                                this.tweens.add({
+                                    targets: entry.glow,
+                                    alpha: { from: 0, to: 0.8 },
+                                    duration: 2200,
+                                    yoyo: true,
+                                    repeat: -1,
+                                    ease: 'Sine.easeInOut'
+                                });
+
+                                this.tweens.add({
+                                    targets: entry.entryContainer,
+                                    scale: { from: 1.02, to: 1.04 },
+                                    duration: 2200,
+                                    yoyo: true,
+                                    repeat: -1,
+                                    ease: 'Sine.easeInOut'
+                                });
+                            });
+                        }
+                    } else {
+                        entry.nameText.setText('');
+                        entry.scoreText.setText('');
+                        entry.badge.setFillStyle(0x22252c);
+                        entry.entryContainer.setAlpha(0);
+                    }
+            });
+        } catch (error) {
+            console.error('Error cargando leaderboard:', error);
+        }
     }
 
     setupInputSystem() {
@@ -398,39 +540,6 @@ export default class MainMenu extends Phaser.Scene {
     setupMusic() {
         this.menuMusic = this.sound.add('menuMusic', { loop: true });
         this.menuMusic.play();
-        this.updateVolume(this.volumeSlider.getValue());
-    }
-
-   updateVolume(value) {
-        // Convertir el valor del slider (0-1) a un rango de volumen (0-2)
-        // donde 0.5 en el slider = 1.0 de volumen
-        let volumeValue;
-        if (value <= 0.5) {
-            // De 0 a 0.5 mapear a 0-1 (silencio a normal)
-            volumeValue = (value * 2);
-        } else {
-            // De 0.5 a 1 mapear a 1-2 (normal a doble)
-            volumeValue = 1 + ((value - 0.5) * 2);
-        }
-        
-        if (this.menuMusic) {
-            this.menuMusic.setVolume(volumeValue);
-        }
-    }
-
-   updateBrightness(value) {
-        // Convertir el valor del slider (0-1) a un rango de brillo (0-2)
-        // donde 0.5 en el slider = 1.0 de brillo
-        let brightness;
-        if (value <= 0.5) {
-            // De 0 a 0.5 mapear a 0-1 (negro a normal)
-            brightness = (value * 2);
-        } else {
-            // De 0.5 a 1 mapear a 1-2 (normal a blanco)
-            brightness = 1 + ((value - 0.5) * 2);
-        }
-        
-        this.cameras.main.setAlpha(brightness);
     }
 
     transitionToState(newState, isCancelled = false) {
@@ -471,8 +580,8 @@ export default class MainMenu extends Phaser.Scene {
             case MENU_STATES.LANGUAGES:
                 this.transitionToLanguages(duration, ease);
                 break;
-            case MENU_STATES.SETTINGS:
-                this.transitionToSettings(duration, ease);
+            case MENU_STATES.LEADERBOARD:
+                this.transitionToLeaderboard(duration, ease);
                 break;
         }
 
@@ -485,8 +594,10 @@ export default class MainMenu extends Phaser.Scene {
     transitionToCentral(duration, ease) {
         const { width, height } = this.scale;
 
-        // Resetear el slider activo
-        this.activeSlider = 0;
+        // Mostrar información del usuario
+        if (this.currentUser) {
+            this.loadUserInfo();
+        }
 
         // Animar cámara al centro
         this.camera.pan(width/2, height/2, duration, ease);
@@ -549,6 +660,63 @@ export default class MainMenu extends Phaser.Scene {
         });
     }
 
+    async loadUserInfo() {
+        try {
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+            let userData = null;
+
+            if (!offline && !this.currentUser?.isLocalOffline) {
+                try {
+                    userData = await this.firebase.loadGameData(this.currentUser.uid);
+                } catch (e) {
+                    userData = null;
+                }
+            }
+
+            // Intentar datos locales si no hay datos remotos
+            if (!userData && this.currentUser) {
+                const localUser = JSON.parse(localStorage.getItem(`localUserData:${this.currentUser.uid}`) || 'null');
+                userData = localUser || null;
+            }
+
+            // Determinar displayName y coopScore usando remoto, localUserData o this.currentUser
+            const displayName = (userData && userData.displayName) || this.currentUser?.displayName || this.currentUser?.email || null;
+            let coopScore = null;
+
+            if (userData && typeof userData.coopScore === 'number') coopScore = userData.coopScore;
+            else if (this.currentUser) {
+                const localUser = JSON.parse(localStorage.getItem(`localUserData:${this.currentUser.uid}`) || 'null');
+                if (localUser && typeof localUser.coopScore === 'number') coopScore = localUser.coopScore;
+            }
+
+            // Mostrar nombre si sabemos uno
+            if (displayName) {
+                this.userNameText.setText(displayName);
+                this.userNameText.setVisible(true);
+            }
+
+            // Si no hay score remoto/local, intentar obtener el mejor score local guardado
+            if (coopScore === null) {
+                try {
+                    const localStored = JSON.parse(localStorage.getItem('localHighScores') || '[]');
+                    if (Array.isArray(localStored) && localStored.length > 0) {
+                        // tomar el máximo entre las entradas locales
+                        const maxLocal = localStored.reduce((m, s) => (s && typeof s.score === 'number' && s.score > m ? s.score : m), 0);
+                        if (maxLocal > 0) coopScore = maxLocal;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            const scoreToShow = (typeof coopScore === 'number') ? coopScore : 0;
+            this.userScoreText.setText(`CO-OP: ${scoreToShow}`);
+            this.userScoreText.setVisible(true);
+        } catch (error) {
+            console.error('Error cargando información del usuario:', error);
+        }
+    }
+
      transitionToVersus(duration, ease) {
         const { width, height } = this.scale;
         const margin = 100; // Margen desde el borde para la partícula
@@ -588,11 +756,12 @@ export default class MainMenu extends Phaser.Scene {
         this.tweens.add({
             targets: this.palaP1,
             width: this.palaExpandedWidth,
+            x: -250,
             duration,
             ease
         });
 
-        // Ocultar pala derecha
+        // Ocultar pala derecha, la roja
         this.tweens.add({
             targets: this.palaP2,
             x: width + this.palaBaseWidth,
@@ -638,7 +807,7 @@ export default class MainMenu extends Phaser.Scene {
         this.animateParticle(width/2, height/2, duration, 'vertical', true);
     }
 
-    transitionToSettings(duration, ease) {
+    transitionToLeaderboard(duration, ease) {
         const { width, height } = this.scale;
 
         // Ocultar palas hacia abajo
@@ -649,16 +818,9 @@ export default class MainMenu extends Phaser.Scene {
             ease
         });
 
-        // Mostrar campo estabilizador y sliders
-        this.stabilizationField.setVisible(true);
-        this.sliders.forEach(slider => slider.setVisible(true));
-
-        // Mostrar texto de ajustes
-        this.texts.settings.setVisible(true);
-
-        // Asegurarse de que el primer slider esté seleccionado
-        this.activeSlider = 0;
-        this.highlightActiveSlider();
+        // Mostrar leaderboard
+        this.leaderboardContainer.setVisible(true);
+        this.loadLeaderboard();
 
         // Animar cámara
         this.camera.pan(width/2, height * 0.7, duration, ease);
@@ -748,9 +910,10 @@ export default class MainMenu extends Phaser.Scene {
     hideAllElements(isCancelled = false) {
         Object.values(this.texts).forEach(text => text.setVisible(false));
         this.idiomastext?.setVisible(false);
+        this.userNameText?.setVisible(false);
+        this.userScoreText?.setVisible(false);
         this.languageBlocks.forEach(block => block.container.setVisible(false));
-        this.stabilizationField?.setVisible(false);
-        this.sliders.forEach(slider => slider.setVisible(false));
+        this.leaderboardContainer?.setVisible(false);
 
         // Ocultar el logo con una animación suave cuando no estamos en el menú central
         if (this.currentState !== MENU_STATES.CENTRAL) {
@@ -814,7 +977,7 @@ export default class MainMenu extends Phaser.Scene {
                 return this.navigationArrows.right;
             case MENU_STATES.LANGUAGES:
                 return this.navigationArrows.down;
-            case MENU_STATES.SETTINGS:
+            case MENU_STATES.LEADERBOARD:
                 return this.navigationArrows.up;
             default:
                 return null;
@@ -957,7 +1120,7 @@ export default class MainMenu extends Phaser.Scene {
                 } else if (isUp) {
                     this.transitionToState(MENU_STATES.LANGUAGES);
                 } else if (isDown) {
-                    this.transitionToState(MENU_STATES.SETTINGS);
+                    this.transitionToState(MENU_STATES.LEADERBOARD);
                 }
                 break;
 
@@ -968,7 +1131,7 @@ export default class MainMenu extends Phaser.Scene {
                     if (this.menuMusic?.isPlaying) {
                         this.menuMusic.stop();
                     }
-                    this.scene.start("PreGame", { language: this.language });
+                    this.scene.start("VersusPreGame", { language: this.language, user: this.currentUser });
                 }
                 break;
 
@@ -979,7 +1142,7 @@ export default class MainMenu extends Phaser.Scene {
                     if (this.menuMusic?.isPlaying) {
                         this.menuMusic.stop();
                     }
-                    this.scene.start("CoopGame", { language: this.language });
+                    this.scene.start("CoopGame", { language: this.language, user: this.currentUser });
                 }
                 break;
 
@@ -995,41 +1158,12 @@ export default class MainMenu extends Phaser.Scene {
                 }
                 break;
 
-            case MENU_STATES.SETTINGS:
-                if (isP1Up) {
-                    if (this.activeSlider === 0) {
-                        // Solo volver al menú central si estamos en el primer slider
-                        this.transitionToState(MENU_STATES.CENTRAL);
-                    } else {
-                        // Navegar entre sliders
-                        this.activeSlider = Math.max(0, this.activeSlider - 1);
-                        this.highlightActiveSlider();
-                    }
-                } else if (isP1Down) {
-                    this.activeSlider = Math.min(this.sliders.length - 1, this.activeSlider + 1);
-                    this.highlightActiveSlider();
-                }
-
-                const slider = this.sliders[this.activeSlider];
-                if (slider) {
-                    if (this.inputSystem.isDown(INPUT_ACTIONS.LEFT, 'player1') || 
-                        this.inputSystem.isDown(INPUT_ACTIONS.LEFT, 'player2')) {
-                        slider.setValue(slider.getValue() - 0.01);
-                    } else if (this.inputSystem.isDown(INPUT_ACTIONS.RIGHT, 'player1') || 
-                             this.inputSystem.isDown(INPUT_ACTIONS.RIGHT, 'player2')) {
-                        slider.setValue(slider.getValue() + 0.01);
-                    }
+            case MENU_STATES.LEADERBOARD:
+                if (isUp) {
+                    this.transitionToState(MENU_STATES.CENTRAL);
                 }
                 break;
         }
-    }
-
-    highlightActiveSlider() {
-        this.sliders.forEach((slider, index) => {
-            const color = index === this.activeSlider ? 0x66ff99 : 0x44d27e;
-            slider.handle.setFillStyle(color);
-            slider.track.setStrokeStyle(index === this.activeSlider ? 2 : 0, 0xffffff);
-        });
     }
 
     updateArrowsPosition() {

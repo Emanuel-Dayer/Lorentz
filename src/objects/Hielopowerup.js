@@ -1,42 +1,14 @@
-import Phaser from "phaser";
+import BasePowerUp from "./BasePowerUp";
 
-export default class Hielopowerup extends Phaser.Physics.Arcade.Sprite {
+export default class Hielopowerup extends BasePowerUp {
     constructor(scene, x, y) {
-        super(scene, x, y, 'Hielo');
+        super(scene, x, y, 'Hielo', 'hielo', 5000);
 
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-
-        // Ajustar primero el hitbox al tamaño completo de la imagen
-        this.body.setSize(this.width, this.height);
-        // Luego aplicar la escala que afectará tanto al sprite como al hitbox
-        this.setScale(0.25);
-        this.setDepth(10);
-        this.setVelocityY(100);
-        this.body.allowGravity = false;
-        this.body.setCollideWorldBounds(false);
-        this.setImmovable(true);
-
-        this.collected = false;
-        this.tipo = 'hielo';
         this.activationDelayMs = 300;
-        this.spawnTime = scene.time.now;
-        this.slowFactor = 0.25; // Un cuarto de la velocidad
-        this.effectDuration = 5000;
-    }
-
-    update() {
-        if (this.y > this.scene.sys.game.config.height + 50) {
-            this.destroy();
-        }
     }
 
     onCollected(jugador) {
-        const now = this.scene.time.now;
-        if (now - this.spawnTime < this.activationDelayMs) {
-            /*
-            console.warn('Hielopowerup: aún no está activo');
-            */
+        if (!this.isActive()) {
             return;
         }
 

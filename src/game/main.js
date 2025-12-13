@@ -1,14 +1,17 @@
 import { AUTO, Scale, Game } from "phaser";
 import { Boot } from "./scenes/Boot";
 import { Preload } from "./scenes/Preload";
+import { AuthLogin } from "./scenes/AuthLogin";
 // Menú principal
 import InitialMenu from "./scenes/MainMenu";
 // Modos de jueego
 import { CoopGame } from "./scenes/CoopGame";
-import { PreGame } from "./scenes/PreGame";
-import { Game as MainGame } from "./scenes/Game";
+import { VersusPreGame } from "./scenes/VersusPreGame";
+import { VersusGame} from "./scenes/VersusGame";
 //Escena victoria o derrota
 import { RslGameResult } from "./scenes/RslGame";
+
+import FirebasePlugin from "../Plugins/FirebasePlugin";
 
 const config = {
   type: AUTO,
@@ -35,7 +38,17 @@ const config = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [Boot, Preload, InitialMenu, PreGame, MainGame, CoopGame, RslGameResult],
+  scene: [Boot, Preload, AuthLogin, InitialMenu, VersusPreGame, VersusGame, CoopGame, RslGameResult],
+  plugins: {
+    global: [
+      {
+        key: "FirebasePlugin",
+        plugin: FirebasePlugin,
+        start: true,
+        mapping: "firebase",
+      },
+    ],
+  },
 };
 
 const StartGame = (parent) => {
