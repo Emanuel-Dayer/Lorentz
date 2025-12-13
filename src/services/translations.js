@@ -2,12 +2,24 @@ import { DE, EN, ES, PT } from "../enums/languages";
 
 const PROJECT_ID = "e7080f43-38c3-4d55-88f3-971d547efc52";
 let translations = null;
-let language = ES;
+
+function isAllowedLanguage(language) {
+  const allowedLanguages = [ES, EN, PT, DE];
+  return allowedLanguages.includes(language);
+}
+
+function getSavedLanguage() {
+  const saved = localStorage.getItem("selectedLanguage");
+  return saved && isAllowedLanguage(saved) ? saved : ES;
+}
+
+let language = getSavedLanguage();
 
 export async function getTranslations(lang, callback) {
+  language = lang;
+  localStorage.setItem("selectedLanguage", lang);
   localStorage.setItem("translations", null);
   translations = null;
-  language = lang;
   if (language === ES) {
     return callback ? callback() : false;
   }
@@ -41,15 +53,16 @@ export function getPhrase(key) {
   return phrase;
 }
 
-function isAllowedLanguage(language) {
-  const allowedLanguages = [ES, EN, PT, DE];
-  return allowedLanguages.includes(language);
-}
-
 export function getLanguageConfig() {
   let languageConfig;
 
-  // Obtener desde la URL el idioma
+  // Primero: verificar si hay un idioma guardado en localStorage
+  const savedLanguage = localStorage.getItem("selectedLanguage");
+  if (savedLanguage && isAllowedLanguage(savedLanguage)) {
+    return savedLanguage;
+  }
+
+  // Segundo: obtener desde la URL el idioma
   /*
   console.log(window.location.href);
   */
