@@ -1,35 +1,17 @@
-import Phaser from "phaser";
+import BasePowerUp from "./BasePowerUp";
 
-export default class Escudospowerup extends Phaser.Physics.Arcade.Sprite {
+export default class Escudospowerup extends BasePowerUp {
   constructor(scene, x, y) {
-    super(scene, x, y, 'Escudo');
+    super(scene, x, y, 'Escudo', 'escudo', 0);
 
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
-
-    // Ajustar primero el hitbox al tamaño completo de la imagen
-    this.body.setSize(this.width / 2, this.height / 2);
-    // Luego aplicar la escala que afectará tanto al sprite como al hitbox
-    this.setScale(0.25);
-    this.setDepth(10);
-    this.setVelocityY(100);
-    this.body.allowGravity = false;
-    this.body.setCollideWorldBounds(false);
-    this.setImmovable(true);
-
-    this.collected = false;
-    this.tipo = 'escudo';
-    this.activationDelayMs = 2000; // o sea 2 segundos
-    this.spawnTime = scene.time.now;
-  }
-
-  update() {
-    if (this.y > this.scene.sys.game.config.height + 50) {
-      this.destroy();
-    }
+    this.activationDelayMs = 2000;
   }
 
 onCollected(jugador) {
+  if (!this.isActive()) {
+    return;
+  }
+
   if (this.collected) return;
   this.collected = true;
 

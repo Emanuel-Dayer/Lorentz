@@ -53,7 +53,7 @@ export class Preload extends Scene {
   // Usamos init para tareas muy rápidas y configuración visual
   init() {
     // Establecer el color de fondo a negro
-    this.cameras.main.setBackground
+    this.cameras.main.setBackgroundColor(0x000000);
   }
   
   /**
@@ -123,6 +123,11 @@ export class Preload extends Scene {
       this.load.image('IconoLorentz', 'IconoLorentz.png');
       this.load.image('logoLorentz', 'logoLorentz.png');
 
+      //Logos de Login
+      this.load.image('GoogleLogo', 'GoogleLogo.png');
+      this.load.image('githubLogo', 'githubLogo.png');
+      this.load.image('IncognitoLogo', 'IncognitoLogo.png');
+
       // imagenes de power Ups: 500x500px, vas a tener que hacerlos mas chicos despues
       this.load.image('Caracol', 'Caracol.png');
       this.load.image('Escudo', 'escudo.png');
@@ -148,7 +153,7 @@ export class Preload extends Scene {
   }
 
   /**
-   * Obtiene las traducciones, limpia la UI e inicia la escena 'Menu'.
+   * Obtiene las traducciones, limpia la UI e inicia la escena 'AuthLogin'.
    * Esta funciónes llamada SOLO después de la espera forzada.
    */
   _startScene() {
@@ -165,8 +170,8 @@ export class Preload extends Scene {
           
           this.glitchTimer.destroy();
 
-          // Iniciar la siguiente escena ('Menu')
-          this.scene.start('Menu', { language: this.#language });
+          // Iniciar la siguiente escena ('AuthLogin')
+          this.scene.start('AuthLogin', { language: this.#language });
       });
   }
   

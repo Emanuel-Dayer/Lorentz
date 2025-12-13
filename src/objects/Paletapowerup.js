@@ -1,41 +1,14 @@
-import Phaser from "phaser";
+import BasePowerUp from "./BasePowerUp";
 
-export default class PowerUpPaleta extends Phaser.Physics.Arcade.Sprite {
+export default class PowerUpPaleta extends BasePowerUp {
   constructor(scene, x, y) {
-    super(scene, x, y, 'Paletas');
+    super(scene, x, y, 'Paletas', 'paleta', 12000);
 
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
-
-    // Ajustar primero el hitbox al tamaño completo de la imagen
-    this.body.setSize(this.width / 2, this.height / 2);
-    // Luego aplicar la escala que afectará tanto al sprite como al hitbox
-    this.setScale(0.25);
-    this.setDepth(10);
-    this.setVelocityY(100); // Velocidad de caída
-    this.body.allowGravity = false;
-    this.body.setCollideWorldBounds(false);
-    this.setImmovable(true);
-
-    this.collected = false;
-
-    this.activationDelayMs = 2000; // o sea 2 segundos
-    this.spawnTime = scene.time.now;
-  }
-
-  update() {
-    // Si sale de la pantalla por abajo, destruir
-    if (this.y > this.scene.sys.game.config.height + 50) {
-      this.destroy();
-    }
+    this.activationDelayMs = 2000;
   }
 
 onCollected(byPlayer) {
-  const now = this.scene.time.now;
-  if (now - this.spawnTime < this.activationDelayMs) {
-    /*
-    console.warn('PowerUpPaleta: aún no está activo');
-    */
+  if (!this.isActive()) {
     return;
   }
 
@@ -50,7 +23,7 @@ onCollected(byPlayer) {
 
   const originalCount = pala.getHitboxGroup().getChildren().length;
 
-  const scene = this.scene; // ← capturás la escena antes de destruir
+  const scene = this.scene; // capturár la escena antes de destruir
 
   // Escalado visual + expansión de hitboxes
   scene.tweens.add({
@@ -62,7 +35,7 @@ onCollected(byPlayer) {
   });
 
   scene.sounds.Ball?.play();
-  this.destroy(); // ← ahora es seguro
+  this.destroy();
 
   // Reversión visual + eliminación de hitboxes extra
   scene.time.delayedCall(12000, () => {

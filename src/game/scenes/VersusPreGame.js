@@ -7,9 +7,9 @@ import { ControlsStatusUI } from "../utils/ControlsStatusUI";
 import keys from "../../enums/keys";
 import { getTranslations, getPhrase } from "../../services/translations";
 
-export class PreGame extends Scene {
+export class VersusPreGame extends Scene {
   constructor() {
-    super("PreGame");
+    super("VersusPreGame");
 
     // Referencias a textos clave
     const {Lucha} = keys.Interfaz;
@@ -116,7 +116,7 @@ export class PreGame extends Scene {
     // Comprobar ganador y pasar a la siguiente escena
     if (Math.abs(this.pullProgress) >= this.PULL_TARGET) {
       const winner = this.pullProgress < 0 ? 1 : 2;
-      this.scene.start("Game", { jugadorParaServir: winner });
+      this.scene.start("VersusGame", { jugadorParaServir: winner });
     }
 
     this.inputSystem.lateUpdate();
