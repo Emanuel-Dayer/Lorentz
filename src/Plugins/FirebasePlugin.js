@@ -24,13 +24,12 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCRxNBeHtepDaBs9LuKAeYeRm_V1EEgus0",
-  authDomain: "lorentz-login-highscore.firebaseapp.com",
-  databaseURL: "https://lorentz-login-highscore-default-rtdb.firebaseio.com",
-  projectId: "lorentz-login-highscore",
-  storageBucket: "lorentz-login-highscore.firebasestorage.app",
-  messagingSenderId: "567772805964",
-  appId: "1:567772805964:web:261ed50f203a07b515ede9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 export default class FirebasePlugin extends Phaser.Plugins.BasePlugin {
