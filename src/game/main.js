@@ -11,7 +11,7 @@ import { VersusGame} from "./scenes/VersusGame";
 //Escena victoria o derrota
 import { RslGameResult } from "./scenes/RslGame";
 
-import FirebasePlugin from "../plugins/FirebasePlugin";
+import FirebasePlugin from "../Plugins/FirebasePlugin";
 
 const config = {
   type: AUTO,
