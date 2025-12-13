@@ -113,7 +113,34 @@ export default class FirebasePlugin extends Phaser.Plugins.BasePlugin {
     const provider = new GithubAuthProvider();
     if (!this.authInitialized) throw new Error('Auth not initialized');
     const credentials = await signInWithPopup(this.auth, provider);
-    return credentials.user;
+    const user = credentials.user;
+    
+    // Obtener el GitHub ID desde providerData
+    const githubProviderData = user.providerData.find(
+      (pd) => pd.providerId === 'github.com'
+    );
+
+    if (githubProviderData) {
+      const githubId = githubProviderData.uid;
+      try {
+        // Llamar a la API de GitHub para obtener el username
+        const response = await fetch(`https://api.github.com/user/${githubId}`, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          // Guardar el login (username) real de GitHub
+          user.githubUsername = userData.login;
+        }
+      } catch (error) {
+        console.warn('Error obteniendo username de GitHub:', error);
+      }
+    }
+    
+    return user;
   }
 
   getUser() {

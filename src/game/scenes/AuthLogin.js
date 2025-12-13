@@ -309,7 +309,19 @@ export class AuthLogin extends Scene {
     try {
       const existingData = await this.firebase.loadGameData(user.uid);
       if (!existingData) {
-        const displayName = user.displayName || user.email || "Usuario";
+        // Prioridad: githubUsername > displayName > email (sin dominio) > "Usuario"
+        let displayName = user.githubUsername || user.displayName;
+        
+        // Si no hay githubUsername ni displayName, extraer del email
+        if (!displayName && user.email) {
+          displayName = user.email.split('@')[0];
+        }
+        
+        // Si aún así está vacío, usar fallback
+        if (!displayName) {
+          displayName = "Usuario";
+        }
+
         await this.firebase.saveGameData(user.uid, {
           displayName,
           isAnonymous: false,
