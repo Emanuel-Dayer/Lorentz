@@ -1,6 +1,6 @@
 import { DE, EN, ES, PT } from "../enums/languages";
 
-const PROJECT_ID = "e7080f43-38c3-4d55-88f3-971d547efc52";
+const PROJECT_ID = import.meta.env.VITE_PROJECT_ID;
 let translations = null;
 
 function isAllowedLanguage(language) {
