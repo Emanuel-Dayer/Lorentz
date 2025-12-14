@@ -1,9 +1,9 @@
 import Phaser from "phaser";
-import { DE, EN, ES, PT } from "../../enums/languages";
-import { FETCHED, FETCHING, READY, TODO } from "../../enums/status";
-import { getTranslations, getPhrase } from "../../services/translations";
-import keys from "../../enums/keys";
-import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
+import { DE, EN, ES, PT } from "../../../apis/Traducila/enums/languages";
+import { FETCHED, FETCHING, READY, TODO } from "../../../apis/Traducila/enums/status";
+import { getTranslations, getPhrase } from "../../../apis/Traducila/translations";
+import keys from "../../../apis/Traducila/enums/keys";
+import InputSystem, { INPUT_ACTIONS } from "../../utils/InputSystem";
 
 // Estados del menú
 const MENU_STATES = {

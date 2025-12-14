@@ -3,7 +3,7 @@ import { Scene } from "phaser";
 import {
   getLanguageConfig,
   getTranslations,
-} from "../../services/translations";
+} from "../../apis/Traducila/translations";
 
 /**
  * Configuración centralizada de la interfaz de usuario de carga.
@@ -119,7 +119,6 @@ export class Preload extends Scene {
     // carga de asests 
     this.load.setPath("assets");
       this.load.image('logo', 'logo.png');
-      this.load.image('background', 'bg.png');
       this.load.image('IconoLorentz', 'IconoLorentz.png');
       this.load.image('logoLorentz', 'logoLorentz.png');
 
