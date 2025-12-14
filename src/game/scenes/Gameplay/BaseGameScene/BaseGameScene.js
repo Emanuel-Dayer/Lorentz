@@ -199,29 +199,62 @@ export class BaseGameScene extends Scene {
     // Arcade a veces no detecta colisiones cuando las partículas son muy rápidas;
     // aquí forzamos una comprobación por distancia y llamamos a `ReboteParticula`
     // si detectamos solapamiento aproximado.
-    const checkManualOverlap = (hitboxGroup) => {
-      this.physics.overlap(this.particulas, hitboxGroup, (particula, circle) => {
-        if (!particula || !circle || !particula.active || !circle.active) return;
-        if (particula.state !== PARTICLE_STATE.NORMAL) return;
-
-        // Estimación de radios (usar circleRadius si existe)
-        const pr = particula.body?.circleRadius || particula.radius || 0;
-        const cr = circle.body?.circleRadius || (circle.radius || 0);
-        const dx = particula.x - circle.x;
-        const dy = particula.y - circle.y;
-        const dist2 = dx * dx + dy * dy;
-        const limit = (pr + cr + 2) * (pr + cr + 2);
-
-        if (dist2 <= limit) {
-          // Usar el manejador de rebote ya existente (incluye cooldowns)
-          this.ReboteParticula(particula, circle);
-        }
-      }, null, this);
+    // Sweep segment->circle para mitigar tunneling: comprobar si el segmento
+    // desde la posición previa estimada de la partícula hasta su posición
+    // actual intersecta alguna hitbox circular de la pala.
+    const segmentIntersectsCircle = (x1, y1, x2, y2, cx, cy, r) => {
+      // Vector del segmento
+      const vx = x2 - x1;
+      const vy = y2 - y1;
+      const lx = cx - x1;
+      const ly = cy - y1;
+      const len2 = vx * vx + vy * vy;
+      let t = 0;
+      if (len2 > 0) {
+        t = (lx * vx + ly * vy) / len2;
+        t = Math.max(0, Math.min(1, t));
+      }
+      const px = x1 + vx * t;
+      const py = y1 + vy * t;
+      const dx = px - cx;
+      const dy = py - cy;
+      return dx * dx + dy * dy <= r * r;
     };
 
-    // Comprobar ambas palas
-    checkManualOverlap(this.pala1.getHitboxGroup());
-    checkManualOverlap(this.pala2.getHitboxGroup());
+    const checkSweepAgainst = (hitboxGroup) => {
+      const hitboxes = hitboxGroup.getChildren();
+      const particles = this.particulas.getChildren();
+      const dtSec = Math.max(0, delta) / 1000;
+
+      for (let i = 0; i < particles.length; i++) {
+        const particula = particles[i];
+        if (!particula || !particula.active || particula.state !== PARTICLE_STATE.NORMAL) continue;
+
+        const vx = particula.body?.velocity?.x || 0;
+        const vy = particula.body?.velocity?.y || 0;
+        const prevX = particula.x - vx * dtSec;
+        const prevY = particula.y - vy * dtSec;
+        const curX = particula.x;
+        const curY = particula.y;
+        const pr = particula.body?.circleRadius || particula.radius || 0;
+
+        for (let j = 0; j < hitboxes.length; j++) {
+          const circle = hitboxes[j];
+          if (!circle || !circle.active) continue;
+          const cr = circle.body?.circleRadius || (circle.radius || 0);
+          const r = pr + cr + 2; // margen pequeño
+
+          if (segmentIntersectsCircle(prevX, prevY, curX, curY, circle.x, circle.y, r)) {
+            this.ReboteParticula(particula, circle);
+            // Tras detectar colisión con esta hitbox, pasar a la siguiente partícula
+            break;
+          }
+        }
+      }
+    };
+
+    checkSweepAgainst(this.pala1.getHitboxGroup());
+    checkSweepAgainst(this.pala2.getHitboxGroup());
   }
   
 //Actualiza la lógica de una partícula pegada a una pala
