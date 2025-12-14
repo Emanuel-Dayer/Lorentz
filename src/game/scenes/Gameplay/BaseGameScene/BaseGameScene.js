@@ -194,6 +194,34 @@ export class BaseGameScene extends Scene {
     this.handleClaimAttempt();
     this.lineaControl.update(delta);
     this.inputSystem.lateUpdate();
+
+    // Comprobación manual de overlap para mitigar tunneling a altas velocidades.
+    // Arcade a veces no detecta colisiones cuando las partículas son muy rápidas;
+    // aquí forzamos una comprobación por distancia y llamamos a `ReboteParticula`
+    // si detectamos solapamiento aproximado.
+    const checkManualOverlap = (hitboxGroup) => {
+      this.physics.overlap(this.particulas, hitboxGroup, (particula, circle) => {
+        if (!particula || !circle || !particula.active || !circle.active) return;
+        if (particula.state !== PARTICLE_STATE.NORMAL) return;
+
+        // Estimación de radios (usar circleRadius si existe)
+        const pr = particula.body?.circleRadius || particula.radius || 0;
+        const cr = circle.body?.circleRadius || (circle.radius || 0);
+        const dx = particula.x - circle.x;
+        const dy = particula.y - circle.y;
+        const dist2 = dx * dx + dy * dy;
+        const limit = (pr + cr + 2) * (pr + cr + 2);
+
+        if (dist2 <= limit) {
+          // Usar el manejador de rebote ya existente (incluye cooldowns)
+          this.ReboteParticula(particula, circle);
+        }
+      }, null, this);
+    };
+
+    // Comprobar ambas palas
+    checkManualOverlap(this.pala1.getHitboxGroup());
+    checkManualOverlap(this.pala2.getHitboxGroup());
   }
   
 //Actualiza la lógica de una partícula pegada a una pala
@@ -509,10 +537,12 @@ export class BaseGameScene extends Scene {
         }
       }
 
-      // Procesar recogida de power up
+      // Procesar recogida de power up: pasar la partícula concreta al powerup
       this.handlePowerUpPickup(jugador);
 
-      powerUp.onCollected(jugador);
+      if (typeof powerUp.onCollected === 'function') {
+        powerUp.onCollected(jugador, particula);
+      }
     } else {
       powerUp.destroy();
     }

@@ -79,12 +79,12 @@ export class Pala {
   }
 
   update(delta) {
-    this.handleMovement();
+    this.handleMovement(delta);
     this.handleRotation(delta);
-    this.updateVisuals();
+    this.updateVisuals(delta);
   }
 
-  handleMovement() {
+  handleMovement(delta) {
     this.visual.body.setVelocityY(0);
     // Usamos el InputSystem de la escena
     if (this.scene.inputSystem.isDown(INPUT_ACTIONS.UP, this.playerKey)) {
@@ -119,7 +119,7 @@ export class Pala {
     this.logicalRotation = Phaser.Math.Clamp(this.logicalRotation, -this.MAX_ROTATION_DEG, this.MAX_ROTATION_DEG);
   }
 
-  updateVisuals() {
+  updateVisuals(delta) {
     // Actualizamos el ángulo visual
     this.visual.setAngle(this.isP1 ? -this.logicalRotation : this.logicalRotation);
 
@@ -132,22 +132,33 @@ export class Pala {
     const visualY = this.visual.y;
 
     // Actualizamos las hitboxes
+    const deltaSec = Math.max(0, delta) / 1000;
     this.hitboxes.children.iterate(circle => {
       if (!circle.body) return;
-      
+
       // Calculamos la nueva posición
       const localY = circle.localYOffset * scaleY;
       const newX = visualX - localY * sinAngle;
       const newY = visualY + localY * cosAngle;
-      
-      // Actualizamos posición preservando velocidad
-      const { velocity, width, height } = circle.body;
+
+      // Guardar velocidad actual
+      const vx = circle.body.velocity.x;
+      const vy = circle.body.velocity.y;
+
+      // Actualizamos posición del game object
       circle.setPosition(newX, newY);
-      
-      // Actualizamos el cuerpo físico
-      circle.body.position.set(newX - width/2, newY - height/2);
-      circle.body.prev.copy(circle.body.position);
-      circle.body.velocity.copy(velocity);
+
+      // Calculamos prev basado en velocidad para mejorar detección de colisiones (evitar tunneling)
+      const width = circle.body.width || 0;
+      const height = circle.body.height || 0;
+      const posX = newX - width/2;
+      const posY = newY - height/2;
+
+      circle.body.position.set(posX, posY);
+      // prev = position - velocity * dt
+      circle.body.prev.set(posX - vx * deltaSec, posY - vy * deltaSec);
+      // restaurar velocidad
+      circle.body.velocity.set(vx, vy);
     });
   }
 
