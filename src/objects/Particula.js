@@ -33,8 +33,11 @@ export class Particula extends Phaser.GameObjects.Arc {
     super(scene, x, y, radius, 0, 360, false, CHARGE_STATES[0].color, 1);
     this.setStrokeStyle(5, 0xffffff);
     
-    // Establecer el límite de hits según el modo de juego
-    this.MAX_HITS = scene.constructor.name === 'CoopGame' ? 9 : 5;
+    // Establecer el límite de hits según config si se pasó explícitamente,
+    // en caso contrario mantener la lógica histórica (fallback).
+    // Usar `config.MAX_HITS` evita depender de `constructor.name`, que
+    // puede cambiar/minificarse en builds de producción (p. ej. Vercel).
+    this.MAX_HITS = (config && config.MAX_HITS) ? config.MAX_HITS : (scene.constructor.name === 'CoopGame' ? 9 : 5);
     
     // Guardamos el radio base para los cálculos de escala
     this.baseRadius = radius;
