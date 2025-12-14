@@ -1,24 +1,24 @@
 import { Scene } from "phaser";
 
 // Importar las clases de los objetos del juego
-import { Pala } from "../../objects/Pala";
-import { Particula, PARTICLE_STATE } from "../../objects/Particula";
-import { BloqueGroup } from "../../objects/BloqueGroup";
-import CampoEstabilizador from '../../objects/CampoEstabilizador.js';
-import LineaControl from '../../objects/LineaControl.js';
-import PowerUpPaleta from '../../objects/Paletapowerup.js';
-import Escudospowerup from '../../objects/Escudospowerup.js';
-import Hielopowerup from '../../objects/Hielopowerup.js';
-import Caracolpowerup from '../../objects/Caracolpowerup.js';
+import { Pala } from "../../../../objects/Pala.js";
+import { Particula, PARTICLE_STATE } from "../../../../objects/Particula.js";
+import { BloqueGroup } from "../../../../objects/BloqueGroup.js";
+import CampoEstabilizador from '../../../../objects/CampoEstabilizador.js';
+import LineaControl from '../../../../objects/LineaControl.js';
+import PowerUpPaleta from '../../../../objects/PowerUps/Paletapowerup.js';
+import Escudospowerup from '../../../../objects/PowerUps/Escudospowerup.js';
+import Hielopowerup from '../../../../objects/PowerUps/Hielopowerup.js';
+import Caracolpowerup from '../../../../objects/PowerUps/Caracolpowerup.js';
 
 // Utilidades para la UI y el sistema de entrada
-import { UIManager } from "../utils/UIManager";
-import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
-import { ControlsStatusUI } from "../utils/ControlsStatusUI";
+import { UIManager } from "../../../utils/UIManager.js";
+import InputSystem, { INPUT_ACTIONS } from "../../../utils/InputSystem.js";
+import { ControlsStatusUI } from "../../../utils/ControlsStatusUI.js";
 
 // Servicios de traducción
-import keys from "../../enums/keys";
-import { getTranslations, getPhrase } from "../../services/translations";
+import keys from "../../../../apis/Traducila/enums/keys.js";
+import { getTranslations, getPhrase } from "../../../../apis/Traducila/translations.js";
 
 /*
     Clase base que contiene toda la lógica compartida entre VersusGame (VS) y CoopGame (COOP)
@@ -382,8 +382,11 @@ export class BaseGameScene extends Scene {
   }
 
   ReboteParticula(particula, circulo) {
+    // Comprobaciones defensivas: salir si datos inesperados (objeto destruido/undefined)
+    if (!particula || !circulo) return;
     const palaVisual = circulo.parentPala;
-    const isP1 = circulo.isP1;
+    if (!palaVisual) return;
+    const isP1 = Boolean(circulo.isP1);
     const pala = isP1 ? this.pala1 : this.pala2;
     const rotationLogica = pala.getLogicalRotation();
 
@@ -399,7 +402,12 @@ export class BaseGameScene extends Scene {
     particula.setLastPlayerHit(playerKey, color);
 
     //procesar el hit según el modo
-    this.handleHitParticle(particula);
+    const wasDestroyed = this.handleHitParticle(particula);
+    
+    // Si la partícula fue destruida durante handleHitParticle, no continuar con el rebote
+    if (wasDestroyed) {
+      return;
+    }
     
     const maxDif = palaVisual.height / 2;
     const factorPosicionY = Phaser.Math.Clamp(circulo.localYOffset / maxDif, -1, 1);
@@ -412,14 +420,18 @@ export class BaseGameScene extends Scene {
     const magnitudVector = Math.sqrt(direccionX * direccionX + direccionY * direccionY);
     const velXNormalizada = (direccionX / magnitudVector) * this.VelocidadParticula;
     const velYNormalizada = (direccionY / magnitudVector) * this.VelocidadParticula;
-    particula.body.setVelocity(velXNormalizada, velYNormalizada);
+    if (particula.body && typeof particula.body.setVelocity === 'function') {
+      particula.body.setVelocity(velXNormalizada, velYNormalizada);
+    }
     this.sounds.Ball.play();
   }
 
   //Procesar el hit de una partícula
   handleHitParticle(particula) {
     // Sobrescribir en subclases
+    // Retorna true si la partícula fue destruida, false si continúa viva
     particula.incrementHitCount();
+    return false;
   }
 
   GolpeBloque(particula, bloque) {

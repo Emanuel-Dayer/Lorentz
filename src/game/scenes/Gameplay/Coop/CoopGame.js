@@ -1,4 +1,4 @@
-import { BaseGameScene } from "./BaseGameScene";
+import { BaseGameScene } from "../BaseGameScene/BaseGameScene";
 
 /*
   Escena CoopGame: Modo Cooperativo
@@ -46,12 +46,17 @@ export class CoopGame extends BaseGameScene {
     if (particula.getHitCount() >= 9) {
       if (this.lineaControl) this.lineaControl.removeLinea(particula);
       particula.destroy();
+      this.sounds.DestroyingParticle.play();
       this.uiManager.updateScores(this.puntuacionTotal);
       
       if (this.particulas.countActive(true) === 0) {
         this.MostrarMensajeVictoria();
       }
+      
+      return true; // Partícula fue destruida
     }
+    
+    return false; // Partícula sigue viva
   }
 
   handleBlockBreak() {

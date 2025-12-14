@@ -1,4 +1,4 @@
-import { BaseGameScene } from "./BaseGameScene";
+import { BaseGameScene } from "../BaseGameScene/BaseGameScene";
 
 /*
   Escena Game: Modo Versus (1v1)

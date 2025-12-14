@@ -1,4 +1,4 @@
-import { DE, EN, ES, PT } from "../enums/languages";
+import { DE, EN, ES, PT } from "./enums/languages";
 
 const PROJECT_ID = import.meta.env.VITE_PROJECT_ID;
 let translations = null;

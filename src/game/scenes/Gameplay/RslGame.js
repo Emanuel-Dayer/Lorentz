@@ -1,5 +1,5 @@
-import keys from "../../enums/keys";
-import { getTranslations, getPhrase } from "../../services/translations";
+import keys from "../../../apis/Traducila/enums/keys";
+import { getTranslations, getPhrase } from "../../../apis/Traducila/translations";
 
 export class RslGameResult extends Phaser.Scene {
   constructor() {

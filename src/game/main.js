@@ -1,17 +1,17 @@
 import { AUTO, Scale, Game } from "phaser";
 import { Boot } from "./scenes/Boot";
 import { Preload } from "./scenes/Preload";
-import { AuthLogin } from "./scenes/AuthLogin";
+import { AuthLogin } from "./scenes/Login/AuthLogin";
 // Menú principal
-import InitialMenu from "./scenes/MainMenu";
+import InitialMenu from "./scenes/MainMenu/MainMenu";
 // Modos de jueego
-import { CoopGame } from "./scenes/CoopGame";
-import { VersusPreGame } from "./scenes/VersusPreGame";
-import { VersusGame} from "./scenes/VersusGame";
+import { CoopGame } from "./scenes/Gameplay/Coop/CoopGame";
+import { VersusPreGame } from "./scenes/Gameplay/Versus/VersusPreGame/VersusPreGame";
+import { VersusGame} from "./scenes/Gameplay/Versus/VersusGame";
 //Escena victoria o derrota
-import { RslGameResult } from "./scenes/RslGame";
+import { RslGameResult } from "./scenes/Gameplay/RslGame";
 
-import FirebasePlugin from "../Plugins/FirebasePlugin";
+import FirebasePlugin from "../apis/Firebase/FirebasePlugin";
 
 const config = {
   type: AUTO,

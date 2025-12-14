@@ -1,11 +1,11 @@
 import { Scene } from "phaser";
-import { Pala } from "../../objects/Pala";
-import { Particula } from "../../objects/Particula";
-import { UIManager } from "../utils/UIManager";
-import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
-import { ControlsStatusUI } from "../utils/ControlsStatusUI";
-import keys from "../../enums/keys";
-import { getTranslations, getPhrase } from "../../services/translations";
+import { Pala } from "../../../../../objects/Pala";
+import { Particula } from "../../../../../objects/Particula";
+import { UIManager } from "../../../../utils/UIManager";
+import InputSystem, { INPUT_ACTIONS } from "../../../../utils/InputSystem";
+import { ControlsStatusUI } from "../../../../utils/ControlsStatusUI";
+import keys from "../../../../../apis/Traducila/enums/keys";
+import { getTranslations, getPhrase } from "../../../../../apis/Traducila/translations";
 
 export class VersusPreGame extends Scene {
   constructor() {

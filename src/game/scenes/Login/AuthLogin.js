@@ -1,6 +1,5 @@
-import Phaser from "phaser";
 import { Scene } from "phaser";
-import InputSystem, { INPUT_ACTIONS } from "../utils/InputSystem";
+import InputSystem, { INPUT_ACTIONS } from "../../utils/InputSystem";
 
 export class AuthLogin extends Scene {
   #selectedOption = 0; // 0: Google, 1: GitHub, 2: Anon
