@@ -328,6 +328,10 @@ export class BaseGameScene extends Scene {
       VelocidadPala: this.VelocidadPala,
       MAX_ROTATION_DEG: this.MAX_ROTATION_DEG
     };
+    // Determinar MAX_HITS de forma robusta usando la key de la escena (no constructor.name)
+    const sceneKey = this.sys && this.sys.settings ? this.sys.settings.key : null;
+    const maxHits = sceneKey === 'CoopGame' ? 9 : 5;
+    particulaConfig.MAX_HITS = maxHits;
 
     const particula = this.particulas.get(x, y, 20, particulaConfig);
     if (particula) {
