@@ -1,4 +1,4 @@
-import { DE, EN, ES, PT } from "./enums/languages";
+import { DE, EN, ES, PT } from "./enums/languages"; 
 
 const PROJECT_ID = import.meta.env.VITE_PROJECT_ID;
 let translations = null;
@@ -8,6 +8,7 @@ function isAllowedLanguage(language) {
   return allowedLanguages.includes(language);
 }
 
+// busca el idioma guardado en localStorage o devuelve español por defecto
 function getSavedLanguage() {
   const saved = localStorage.getItem("selectedLanguage");
   return saved && isAllowedLanguage(saved) ? saved : ES;
