@@ -7,7 +7,7 @@ export default class Escudospowerup extends BasePowerUp {
     this.activationDelayMs = 2000;
   }
 
-onCollected(jugador) {
+onCollected(jugador, targetParticula) {
   if (!this.isActive()) {
     return;
   }
@@ -15,9 +15,11 @@ onCollected(jugador) {
   if (this.collected) return;
   this.collected = true;
 
-  const particula = this.scene.particulas.getChildren().find(p =>
-    p.active && p.lastPlayerHit === jugador
-  );
+  // Preferir la partícula concreta pasada por el handler de colisión
+  let particula = targetParticula && targetParticula.active ? targetParticula : null;
+  if (!particula) {
+    particula = this.scene.particulas.getChildren().find(p => p.active && p.lastPlayerHit === jugador);
+  }
 
   if (particula) {
     if (particula.escudoActivo) {

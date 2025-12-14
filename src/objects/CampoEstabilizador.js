@@ -62,6 +62,8 @@ export default class CampoEstabilizador {
       // Si tiene escudo, simplemente rebota y pierde el escudo
       if (particula.escudoActivo) {
         if (particula.halo) {
+          // Usar los sonidos de la escena (CampoEstabilizador no define `this.sounds`)
+          this.scene.sounds?.TouchingStabalizer2?.play();
           particula.halo.destroy();
           particula.halo = null;
         }

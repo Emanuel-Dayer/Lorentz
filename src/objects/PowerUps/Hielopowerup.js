@@ -7,7 +7,7 @@ export default class Hielopowerup extends BasePowerUp {
         this.activationDelayMs = 300;
     }
 
-    onCollected(jugador) {
+    onCollected(jugador, targetParticula) {
         if (!this.isActive()) {
             return;
         }
@@ -15,9 +15,11 @@ export default class Hielopowerup extends BasePowerUp {
         if (this.collected) return;
         this.collected = true;
 
-        const particula = this.scene.particulas.getChildren().find(p =>
-            p.active && p.lastPlayerHit === jugador
-        );
+        // Preferir partícula pasada desde el overlap; si no, buscar por lastPlayerHit
+        let particula = targetParticula && targetParticula.active ? targetParticula : null;
+        if (!particula) {
+            particula = this.scene.particulas.getChildren().find(p => p.active && p.lastPlayerHit === jugador);
+        }
 
         if (!particula) {
             this.destroy();
