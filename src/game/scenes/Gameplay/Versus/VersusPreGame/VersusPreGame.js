@@ -1,6 +1,6 @@
 import { Scene } from "phaser";
 import { Pala } from "../../../../../objects/Pala";
-import { Particula } from "../../../../../objects/Particula";
+import { Particula } from "../../../../../objects/Particulas/Particula";
 import { UIManager } from "../../../../utils/UIManager";
 import InputSystem, { INPUT_ACTIONS } from "../../../../utils/InputSystem";
 import { ControlsStatusUI } from "../../../../utils/ControlsStatusUI";

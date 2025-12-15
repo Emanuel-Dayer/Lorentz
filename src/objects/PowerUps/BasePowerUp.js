@@ -36,7 +36,8 @@ export default class BasePowerUp extends Phaser.Physics.Arcade.Sprite {
   //destruir si sale de pantalla
   update() {
     if (this.y > this.scene.sys.game.config.height + 50) {
-      this.destroy();
+      // Desactivar para permitir reutilización vía PowerUpFactory
+      this.deactivateForPool();
     }
   }
 
@@ -57,6 +58,32 @@ export default class BasePowerUp extends Phaser.Physics.Arcade.Sprite {
 
   onCollected(jugador) {
     // Sobrescribir en subclases
-    this.destroy();
+    this.deactivateForPool();
+  }
+
+  /**
+   * Revive the power-up when reusing from a pool. Resetea flags y tiempos
+   * para que el objeto vuelva a comportarse como recién creado.
+   */
+  reviveFromPool(x, y) {
+    this.setPosition(x, y);
+    this.setActive(true);
+    this.setVisible(true);
+    this.collected = false;
+    this.spawnTime = this.scene.time.now;
+    if (this.body) {
+      this.body.enable = true;
+      this.body.setVelocityY(100);
+    }
+  }
+
+  /**
+   * Desactiva el power-up para devolverlo al pool sin destruir.
+   */
+  deactivateForPool() {
+    this.collected = true;
+    this.setActive(false);
+    this.setVisible(false);
+    if (this.body) this.body.enable = false;
   }
 }

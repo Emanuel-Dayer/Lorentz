@@ -60,6 +60,6 @@ export default class Caracolpowerup extends BasePowerUp {
         });
 
         this.scene.sounds.Ball?.play();
-        this.destroy();
+        this.deactivateForPool();
     }
 }

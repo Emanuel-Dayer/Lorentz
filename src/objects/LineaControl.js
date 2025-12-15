@@ -1,4 +1,4 @@
-import { PARTICLE_STATE } from './Particula';
+import { PARTICLE_STATE } from './Particulas/Particula';
 
 /**
  * LineaControl: administra líneas "bezier rectas" (curva de Bezier con un único control

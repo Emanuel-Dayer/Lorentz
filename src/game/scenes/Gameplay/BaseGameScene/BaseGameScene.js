@@ -2,14 +2,14 @@ import { Scene } from "phaser";
 
 // Importar las clases de los objetos del juego
 import { Pala } from "../../../../objects/Pala.js";
-import { Particula, PARTICLE_STATE } from "../../../../objects/Particula.js";
+import { Particula, PARTICLE_STATE } from "../../../../objects/Particulas/Particula.js";
 import { BloqueGroup } from "../../../../objects/BloqueGroup.js";
 import CampoEstabilizador from '../../../../objects/CampoEstabilizador.js';
 import LineaControl from '../../../../objects/LineaControl.js';
-import PowerUpPaleta from '../../../../objects/PowerUps/Paletapowerup.js';
-import Escudospowerup from '../../../../objects/PowerUps/Escudospowerup.js';
-import Hielopowerup from '../../../../objects/PowerUps/Hielopowerup.js';
-import Caracolpowerup from '../../../../objects/PowerUps/Caracolpowerup.js';
+// Power-ups ahora gestionados por PowerUpFactory
+
+import ParticleFactory from '../../../../objects/Particulas/ParticleFactory.js';
+import PowerUpFactory from '../../../../objects/PowerUps/PowerUpFactory.js';
 
 // Utilidades para la UI y el sistema de entrada
 import { UIManager } from "../../../utils/UIManager.js";
@@ -117,13 +117,14 @@ export class BaseGameScene extends Scene {
     this.pala2 = new Pala(this, gameWidth - 100, gameHeight / 2, 'player2');
 
     // Crear grupo de Power Ups
-    this.powerUps = this.add.group();
+    // Ahora usamos una fábrica que mantiene pools por tipo y un grupo maestro
+    this.powerUpFactory = new PowerUpFactory(this);
+    this.powerUps = this.powerUpFactory.getGroup();
     
     // Crear grupo de partículas
-    this.particulas = this.add.group({
-      classType: Particula,
-      runChildUpdate: true
-    });
+    // Usar ParticleFactory para encapsular el pool de partículas
+    this.particleFactory = new ParticleFactory(this);
+    this.particulas = this.particleFactory.getGroup();
 
     // Colisiones de Power Ups y Partículas
     this.physics.add.overlap(
@@ -169,7 +170,8 @@ export class BaseGameScene extends Scene {
 
     this.particulas.getChildren().forEach(particula => {
       if (!particula.active || !particula.body) {
-        particula.destroy();
+        // Devolver al pool en vez de destruir para reutilización
+        this.particleFactory.release(particula);
         return;
       }
       
@@ -317,7 +319,7 @@ export class BaseGameScene extends Scene {
         }
         
         for (let i = countToClaim; i < reclamables.length; i++) {
-          reclamables[i].destroy();
+          this.particleFactory.release(reclamables[i]);
         }
         
         this.sounds.Ball.play();
@@ -384,41 +386,37 @@ export class BaseGameScene extends Scene {
       this.reclaimText = null;
     }
     
-    const particulaConfig = {
-      VelocidadParticula: this.VelocidadParticula,
-      VelocidadPala: this.VelocidadPala,
-      MAX_ROTATION_DEG: this.MAX_ROTATION_DEG
-    };
-    // Determinar MAX_HITS de forma robusta usando la key de la escena (no constructor.name)
-    const sceneKey = this.sys && this.sys.settings ? this.sys.settings.key : null;
-    const maxHits = sceneKey === 'CoopGame' ? 9 : 5;
-    particulaConfig.MAX_HITS = maxHits;
-
-    const particula = this.particulas.get(x, y, 20, particulaConfig);
+    // Delegate spawn to ParticleFactory which gestiona el pool
+    const particula = this.particleFactory.spawn(x, y, state);
+    // Asegurarnos de ajustar MAX_HITS según el tipo de escena
     if (particula) {
-      particula.setActive(true).setVisible(true);
-      particula.state = state;
+      const sceneKey = this.sys && this.sys.settings ? this.sys.settings.key : null;
+      const maxHits = sceneKey === 'CoopGame' ? 9 : 5;
+      particula.MAX_HITS = maxHits;
       particula.body.onWorldBounds = false;
-      particula.setDebugVisibility(this.physics.world.drawDebug);
-
-      if (state === PARTICLE_STATE.RECLAMABLE) {
-        this.setupReclaimableParticle(particula);
-      } else {
-        particula.setStrokeStyle(5, 0xffffff);
-        particula.body.setImmovable(false);
-      }
     }
     return particula;
   }
 
   //Configurar una partícula reclamable
   setupReclaimableParticle(particula) {
-    particula.body.setImmovable(true).setVelocity(0, 0);
+    const gameWidth = this.sys.game.config.width;
+    const gameHeight = this.sys.game.config.height;
+    
+    // Desactivar la física de la partícula reclamable para evitar que la
+    // resolución del motor la separe si otra partícula está en la misma posición.
+    if (particula.body) {
+      particula.body.enable = false;
+      particula.body.setVelocity(0, 0);
+    }
     particula.setStrokeStyle(5, 0xffff00);
     this.sounds.NewParticle.play();
 
-    const gameWidth = this.sys.game.config.width;
-    const gameHeight = this.sys.game.config.height;
+    // Asegurar posicionamiento exacto DESPUÉS de cambios al body
+    particula.setPosition(gameWidth / 2, gameHeight / 2);
+    if (particula.hitCountText) {
+      particula.hitCountText.setPosition(gameWidth / 2, gameHeight / 2);
+    }
 
     const p1Count = this.particlesOnP1.length;
     const p2Count = this.particlesOnP2.length;
@@ -435,7 +433,7 @@ export class BaseGameScene extends Scene {
 
   _resetParticulasYTexto() {
     if (this.lineaControl) this.lineaControl.clearAll();
-    this.particulas.getChildren().forEach(p => p.destroy());
+    this.particulas.getChildren().forEach(p => this.particleFactory.release(p));
     
     this.particlesOnP1 = [];
     this.particlesOnP2 = [];
@@ -511,28 +509,9 @@ export class BaseGameScene extends Scene {
     // Chance de soltar Power Up
     if (Phaser.Math.Between(1, 100) <= 20) {
       const tipo = Phaser.Math.RND.pick(['paleta', 'escudo', 'hielo', 'caracol']);
-      let powerUp;
-
-      switch (tipo) {
-        case 'paleta':
-          powerUp = new PowerUpPaleta(this, x, y);
-          break;
-        case 'escudo':
-          powerUp = new Escudospowerup(this, x, y);
-          break;
-        case 'hielo':
-          powerUp = new Hielopowerup(this, x, y);
-          break;
-        case 'caracol':
-          powerUp = new Caracolpowerup(this, x, y);
-          break;
-      }
-
-      if (powerUp) {
-        this.add.existing(powerUp);
-        this.physics.add.existing(powerUp);
-        this.powerUps.add(powerUp);
-      }
+      // Usar la fábrica para spawn/reciclado de power-ups
+      const powerUp = this.powerUpFactory.spawn(tipo, x, y);
+      // La fábrica añade el power-up al grupo maestro; no hace falta add.existing
     }
 
     if (this.bloques.checkAndHandleCompletedRow(rowIndex)) {
@@ -565,7 +544,7 @@ export class BaseGameScene extends Scene {
     if (jugador === 'player1' || jugador === 'player2') {
       if (powerUp.tipo === 'escudo') {
         if (particula.escudoActivo) {
-          powerUp.destroy();
+          this.powerUpFactory.release(powerUp);
           return;
         }
       }
@@ -577,7 +556,7 @@ export class BaseGameScene extends Scene {
         powerUp.onCollected(jugador, particula);
       }
     } else {
-      powerUp.destroy();
+      this.powerUpFactory.release(powerUp);
     }
   }
 
@@ -619,7 +598,7 @@ export class BaseGameScene extends Scene {
     this.juegoFinalizado = true;
 
     if (this.lineaControl) this.lineaControl.clearAll();
-    this.particulas.getChildren().forEach(p => p.destroy());
+    this.particulas.getChildren().forEach(p => this.particleFactory.release(p));
     if (this.reclaimText) {
       this.reclaimText.destroy();
       this.reclaimText = null;
