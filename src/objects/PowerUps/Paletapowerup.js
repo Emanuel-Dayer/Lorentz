@@ -35,7 +35,7 @@ onCollected(byPlayer) {
   });
 
   scene.sounds.Ball?.play();
-  this.destroy();
+  this.deactivateForPool();
 
   // Reversión visual + eliminación de hitboxes extra
   scene.time.delayedCall(12000, () => {

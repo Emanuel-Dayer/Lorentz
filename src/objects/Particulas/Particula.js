@@ -1,5 +1,5 @@
 import { Scene } from "phaser";
-import { Pala } from "./Pala";
+import { Pala } from "../Pala";
 
 export const PARTICLE_STATE = {
   NORMAL: "normal",
@@ -234,7 +234,10 @@ export class Particula extends Phaser.GameObjects.Arc {
     
     // Restaurar propiedades visuales y físicas
     this.setStrokeStyle(5, 0xffffff); // Color de borde normal
-    this.body.setImmovable(false);
+    if (this.body) {
+      this.body.enable = true;
+      this.body.setImmovable(false);
+    }
 
     this.pegar(pala);
     this.setDebugVisibility(this.scene.physics.world.drawDebug);
@@ -257,8 +260,22 @@ export class Particula extends Phaser.GameObjects.Arc {
       
       // Actualizar tamaño visual y físico
       const newRadius = this.baseRadius * chargeState.scale;
+      
+      // Guardar posición antes de cambiar radio para restaurarla después
+      const currentX = this.x;
+      const currentY = this.y;
+      
       this.setRadius(newRadius);
-      this.body.setCircle(newRadius); // Actualizar el hitbox físico
+      
+      // Restaurar posición después de cambiar radius
+      this.setPosition(currentX, currentY);
+      
+      // Actualizar el círculo del body sin mover
+      if (this.body) {
+        this.body.setCircle(newRadius);
+        // Restaurar posición nuevamente después de cambiar el body circle
+        this.setPosition(currentX, currentY);
+      }
       
       // Actualizar velocidad si está en movimiento
       if (this.body.velocity.x !== 0 || this.body.velocity.y !== 0) {

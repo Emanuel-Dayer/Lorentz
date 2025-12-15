@@ -67,7 +67,7 @@ export class VersusGame extends BaseGameScene {
 
     if (scored || outOfBounds) {
       if (this.lineaControl) this.lineaControl.removeLinea(particula);
-      particula.destroy();
+    this.particleFactory.release(particula);
 
       if (scored) {
         this.uiManager.updateScores(this.puntuacionP1, this.puntuacionP2);
@@ -108,10 +108,10 @@ export class VersusGame extends BaseGameScene {
         return;
       }
 
-      particula.destroy();
-      if (this.particulas.countActive(true) === 0) {
-        this.ResetParticulaParaServir(this.jugadorParaServir);
-      }
+        this.particleFactory.release(particula);
+        if (this.particulas.countActive(true) === 0) {
+          this.ResetParticulaParaServir(this.jugadorParaServir);
+        }
       return;
     }
 
@@ -144,8 +144,8 @@ export class VersusGame extends BaseGameScene {
       this.sounds.TouchingStabalizer2.play();
 
     } else {
-      if (this.lineaControl) this.lineaControl.removeLinea(particula);
-      particula.destroy();
+    if (this.lineaControl) this.lineaControl.removeLinea(particula);
+    this.particleFactory.release(particula);
 
       if (opponentPlayer === 1) this.puntuacionP1++;
       else this.puntuacionP2++;

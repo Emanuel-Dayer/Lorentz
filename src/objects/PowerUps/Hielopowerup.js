@@ -22,7 +22,7 @@ export default class Hielopowerup extends BasePowerUp {
         }
 
         if (!particula) {
-            this.destroy();
+            this.deactivateForPool();
             return;
         }
 
@@ -80,6 +80,9 @@ export default class Hielopowerup extends BasePowerUp {
             }
         });
 
+        // Guardar referencia al iceEffect en la partícula para limpieza en release/pool
+        particula._iceEffect = iceEffect;
+
         // Restaurar velocidad después del efecto
         scene.time.delayedCall(this.effectDuration, function() {
             if (particula.active) {
@@ -117,11 +120,12 @@ export default class Hielopowerup extends BasePowerUp {
                 if (iceEffect && iceEffect.active) {
                     iceEffect.destroy();
                 }
+                particula._iceEffect = null;
                 delete particula.originalVelocity;
             }
         }, [], scene);
 
         scene.sounds.Ball?.play();
-        this.destroy();
+        this.deactivateForPool();
     }
 }

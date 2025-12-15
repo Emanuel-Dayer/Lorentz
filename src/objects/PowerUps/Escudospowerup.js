@@ -21,10 +21,10 @@ onCollected(jugador, targetParticula) {
     particula = this.scene.particulas.getChildren().find(p => p.active && p.lastPlayerHit === jugador);
   }
 
-  if (particula) {
+    if (particula) {
     if (particula.escudoActivo) {
       // Ya tiene escudo, no aplicar otro
-      this.destroy();
+      this.deactivateForPool();
       return;
     }
 
@@ -58,6 +58,6 @@ onCollected(jugador, targetParticula) {
       });
   }
 
-  this.destroy();
+    this.deactivateForPool();
 }
 }

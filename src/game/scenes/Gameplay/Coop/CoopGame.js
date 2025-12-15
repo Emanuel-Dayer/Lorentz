@@ -45,7 +45,7 @@ export class CoopGame extends BaseGameScene {
 
     if (particula.getHitCount() >= 9) {
       if (this.lineaControl) this.lineaControl.removeLinea(particula);
-      particula.destroy();
+      this.particleFactory.release(particula);
       this.sounds.DestroyingParticle.play();
       this.uiManager.updateScores(this.puntuacionTotal);
       
@@ -89,8 +89,8 @@ export class CoopGame extends BaseGameScene {
     }
 
     if (outOfBounds) {
-      if (this.lineaControl) this.lineaControl.removeLinea(particula);
-      particula.destroy();
+    if (this.lineaControl) this.lineaControl.removeLinea(particula);
+    this.particleFactory.release(particula);
       this.uiManager.updateScores(this.puntuacionTotal);
 
       if (this.particulas.countActive(true) === 0) {
@@ -127,7 +127,7 @@ export class CoopGame extends BaseGameScene {
     this.sounds.TouchingStabalizer2.play();
 
     if (this.lineaControl) this.lineaControl.removeLinea(particula);
-    particula.destroy();
+    this.particleFactory.release(particula);
 
     if (this.particulas.countActive(true) === 0) {
       this.MostrarMensajeVictoria();
